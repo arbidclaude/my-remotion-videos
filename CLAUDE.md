@@ -46,3 +46,22 @@ ffmpeg -i ref-X.mp4 -vf "fps=1/2,scale=480:-2,drawtext=fontfile=/usr/share/fonts
 - One accent colour per piece (orange, lime green), on a dark base, with occasional light-mode inserts for contrast.
 - Kinetic typography carries the story. Emphasise 1–2 words per line with the accent colour.
 - Beats last 1.5–2.5 s, with glitch, whip and blur transitions and big full-screen word slams for emphasis.
+
+## Premium client re-edits (OPLA 2026 "Beyond the Grades")
+
+Two vertical films were rebuilt from scratch in Remotion from client cuts (`public/input/v1.mp4` and `v2.mp4`, which are git-ignored because they're over 50MB):
+
+| Composition | File | Length | Concept |
+|---|---|---|---|
+| `V1-YourDot` | `src/v1/V1.tsx` | 50.7 s | One continuous camera move. Dot → wave → layered waves → dot → code braces → phone UI → dot → pathway nodes → 3D starfield + 8,000+ counter → dot → full stop of "Grades." |
+| `V2-GetThe60` | `src/v2/V2.tsx` | 54.0 s | Game HUD intro, then one continuous score chart. A custom projection tracks the line head through 8 chapters, then pulls back to reveal the full V-curve and 59/60. |
+
+- **Shared toolkit** (`src/premium/`):
+  - `lib.ts`: easing curves and `smoothKeys` (monotone-cubic camera keys).
+  - `components.tsx`: `Kinetic` (word-by-word blur reveal with an accent light sweep), `Decode` (scramble text), `FilmLook` (grain + vignette), `Flash`, `Orb`.
+  - `fonts.ts`: Inter and JetBrains Mono, loaded from `public/fonts`.
+- **Music:** custom tracks generated with Nixly AI, saved as `public/audio/music-v1.mp3` and `music-v2.mp3`. Both are 99.4 BPM with a 2.415 s bar.
+- **Audio timelines:** `src/vN/timeline.json` holds the music edit (beat-aligned splices: `[videoStart, musicStart, musicEnd]`) and the SFX cue list.
+- **Mixing:** `python3 -I scripts/audio/mix.py src/v1/timeline.json public/audio/mix-v1.wav`. It synthesises every SFX (whooshes, risers, impacts, heartbeat, ticks, chimes, 8-bit chip…), ducks the music under impacts and normalises to −14 LUFS. Re-run it after changing any cue.
+- **Stills for review:** `node scripts/stills.mjs <compId> <outDir> <seconds…>`.
+- **Rendering:** pass `--browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`, because remotion.media is not reachable from the cloud container.
