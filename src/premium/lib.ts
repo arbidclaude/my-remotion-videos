@@ -80,3 +80,14 @@ export const rand = (seed: number) => {
   const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
   return x - Math.floor(x);
 };
+
+/** Beat-sync time-warp: maps video time -> story time through [video, story] points (piecewise linear). */
+export const makeWarp = (pts: number[][] | undefined) => (tv: number) => {
+  if (!pts || pts.length < 2) return tv;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [v0, s0] = pts[i];
+    const [v1, s1] = pts[i + 1];
+    if (tv <= v1) return s0 + ((tv - v0) / (v1 - v0)) * (s1 - s0);
+  }
+  return tv;
+};

@@ -2,9 +2,12 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { AbsoluteFill, Audio, continueRender, delayRender, staticFile, useCurrentFrame } from "remotion";
 import { measureText } from "@remotion/layout-utils";
 import "../premium/fonts";
+import timeline from "./timeline.json";
+
+const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
 import { Ambience, Flash, FilmLook, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
-import { FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
+import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
 const VIOLET = "#9B7BFF";
@@ -61,8 +64,8 @@ const Backdrop: React.FC<{ t: number }> = ({ t }) => {
   return (
     <AbsoluteFill style={{ background: BG }}>
       <AbsoluteFill style={{ background: "radial-gradient(120% 75% at 50% 36%, #FFFDF9 0%, #FAF5EC 55%, #EFE5D5 100%)" }} />
-      <Orb x={CX + Math.sin(t * 0.21) * 120} y={CY - 60 + Math.cos(t * 0.17) * 80} r={620} color="rgba(91,140,255,0.10)" opacity={pulse} />
-      <Orb x={CX - 260 + Math.sin(t * 0.13) * 90} y={1380} r={520} color="rgba(255,170,110,0.16)" />
+      <Orb x={CX + Math.sin(t * 0.21) * 120} y={CY - 60 + Math.cos(t * 0.17) * 80} r={620} color="rgba(91,140,255,0.05)" opacity={pulse} />
+      <Orb x={CX - 260 + Math.sin(t * 0.13) * 90} y={1380} r={520} color="rgba(255,170,110,0.08)" />
       <Orb x={CX} y={CY} r={900} color="rgba(91,140,255,0.16)" opacity={explode} />
       {/* parallax grid */}
       <AbsoluteFill
@@ -669,7 +672,7 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
           color: INK,
           fontVariantNumeric: "tabular-nums",
           opacity: inP * (1 - handOver),
-          textShadow: "0 24px 60px rgba(91,140,255,0.22)",
+          textShadow: "0 18px 40px rgba(80,55,25,0.12)",
         }}
       >
         <span style={{ filter: blurY > 0.3 ? `blur(${blurY * 0.3}px)` : undefined, display: "inline-block" }}>{val.toLocaleString("en-US")}</span>
@@ -875,7 +878,8 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
 /* ================================================================== */
 export const V1: React.FC = () => {
   const frame = useCurrentFrame();
-  const t = frame / FPS;
+  // beat-synced story clock (see scripts/audio/beatalign.py)
+  const t = warpT(frame / FPS);
   return (
     <AbsoluteFill style={{ background: BG }}>
       <Audio src={staticFile("audio/mix-v1.wav")} />
@@ -906,8 +910,7 @@ export const V1: React.FC = () => {
         <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
       </AbsoluteFill>
-      <Flash t={t} at={DROP} color="#BCD0FF" peak={0.5} dur={0.8} />
-      <Flash t={t} at={TITLE_AT + 0.75} color="#9DB6FF" peak={0.18} dur={0.6} />
+      <Flash t={t} at={DROP} color="#FFFFFF" peak={0.45} dur={0.6} />
       <FilmLook />
       <AbsoluteFill style={{ background: PAPER, opacity: 1 - prog(t, 0, 0.6, easeOut) }} />
     </AbsoluteFill>

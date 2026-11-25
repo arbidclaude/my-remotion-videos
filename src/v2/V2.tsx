@@ -1,9 +1,12 @@
 import React from "react";
 import { AbsoluteFill, Audio, staticFile, useCurrentFrame } from "remotion";
 import "../premium/fonts";
+import timeline from "./timeline.json";
+
+const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
 import { Ambience, Decode, Flash, FilmLook, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
-import { FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
+import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
 
@@ -608,7 +611,7 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined }}>
       <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1 }}>
-        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? `0 24px 60px ${YELLOW}55` : undefined }}>{val}</span>
+        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? "0 18px 40px rgba(80,55,25,0.12)" : undefined }}>{val}</span>
         <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
       </div>
       <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#5E5B55", marginTop: 20, opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
@@ -648,7 +651,8 @@ const pushIn = smoothKeys([[0, 1.06], [3.7, 1.0], [13.89, 1.0], [20.6, 1.05], [2
 
 export const V2: React.FC = () => {
   const frame = useCurrentFrame();
-  const t = frame / FPS;
+  // beat-synced story clock (see scripts/audio/beatalign.py)
+  const t = warpT(frame / FPS);
   const s = pushIn(t) + kick(t);
   const tint = tintAt(t);
   const redPulse = t > 14 && t < 20.8 ? Math.exp(-(((t - 14.1) % 0.85) * 5)) * 0.35 * (1 - prog(t, 20, 20.8)) : 0;
@@ -679,7 +683,7 @@ export const V2: React.FC = () => {
         <Kinetic t={t} text="Then asthma|hit me *hard.*" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
         <Kinetic t={t} text="I had to|slow down." inAt={17.25} outAt={20.6} accent={RED} y={TY} stagger={0.12} />
         <Bubble t={t} at={21.3} outAt={25.3} who="BEST FRIEND" text="You can do it." color={GREEN} x={500} y={390} />
-        <Kinetic t={t} text="So I came back.|With *confidence.*" inAt={22.3} outAt={25.55} accent={GREEN} y={TY} />
+        <Kinetic t={t} text="So I came back.|With *confidence.*" inAt={22.3} outAt={25.25} accent={GREEN} y={TY} />
         <TipCard t={t} />
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
@@ -690,13 +694,10 @@ export const V2: React.FC = () => {
         <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={50.95} accent={YELLOW} y={TY} size={96} weight={800} />
         <Title t={t} />
       </AbsoluteFill>
-      <Flash t={t} at={1.81} color={RED} peak={0.08} dur={0.5} />
       <Sparkles t={t} at={44.95} x={470} y={TY - 40} color={YELLOW} n={14} spread={260} seed={4} />
       <Sparkles t={t} at={51.9} x={760} y={1340} color={YELLOW} n={12} spread={220} seed={6} />
       <Flash t={t} at={4.23} color="#FFFFFF" peak={0.5} dur={0.6} />
-      <Flash t={t} at={35.62} color={ORANGE} peak={0.18} dur={0.6} />
-      <Flash t={t} at={42.86} color="#FFE7A3" peak={0.5} dur={0.8} />
-      <Flash t={t} at={48.9} color={YELLOW} peak={0.12} dur={0.5} />
+      <Flash t={t} at={42.86} color="#FFFFFF" peak={0.4} dur={0.6} />
       <FilmLook />
       <AbsoluteFill style={{ background: PAPER, opacity: (1 - prog(t, 0, 0.5, easeOut)) + prog(t, 53.4, 54) }} />
     </AbsoluteFill>

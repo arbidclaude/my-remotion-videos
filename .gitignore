@@ -8,3 +8,8 @@ out
 
 # Client source footage (>50MB each) — kept local only
 public/input/*.mp4
+
+# Mixkit music/SFX: licence forbids redistributing the files -> fetched by scripts/audio/fetch-assets.sh
+public/audio/*.mp3
+public/audio/*.wav
+public/sfx/*.mp3

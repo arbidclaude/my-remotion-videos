@@ -15,6 +15,7 @@ import numpy as np
 from scipy.signal import butter, sosfilt
 
 SR = 48000
+TARGET_LUFS = -16.0  # sound-effects skill target (measured again on the exported MP4)
 rng = np.random.default_rng(7)
 
 
@@ -290,13 +291,17 @@ def main(tl_path, out_path):
     sfx = np.zeros((N, 2))
     duck = np.ones(N)
     cache = {}
+    warp = tl.get("warp")
     for cue in tl["sfx"]:
         t, name, gdb, pan = cue[:4]
+        if warp:  # cue times are written in story time; place them on the warped video clock
+            t = float(np.interp(t, [w[1] for w in warp], [w[0] for w in warp]))
         maxd = cue[4] if len(cue) > 4 else None
         if name.startswith("@"):
             # real recorded sample from public/sfx (mono-summed, optional trim with soft tail)
             if name not in cache:
-                cache[name] = load_music(f"public/sfx/{name[1:]}.mp3").mean(axis=1)
+                fn = name[1:] if "." in name else name[1:] + ".mp3"
+                cache[name] = load_music(f"public/sfx/{fn}").mean(axis=1)
             s = cache[name].copy()
             if maxd:
                 n = min(len(s), int(maxd * SR))
@@ -308,7 +313,7 @@ def main(tl_path, out_path):
             s = BANK[name]()
         g = 10 ** (gdb / 20)
         st = int(t * SR)
-        if name.startswith("riser") or name == "suck":
+        if "riser" in name or name == "suck":
             st = int(t * SR) - len(s)  # risers END on the cue time
         st = max(0, st)
         e = min(len(s), N - st)
@@ -330,13 +335,16 @@ def main(tl_path, out_path):
 
         meter = pyln.Meter(SR)
         lufs = meter.integrated_loudness(mix)
-        mix *= 10 ** ((-14 - lufs) / 20)
+        mix *= 10 ** ((TARGET_LUFS - lufs) / 20)
         print("LUFS before", round(lufs, 2))
     except Exception as ex:  # noqa
         print("no pyloudnorm", ex)
-    peak = np.max(np.abs(mix))
-    if peak > 0.95:
-        mix = np.tanh(mix / 0.95 * 1.0) * 0.95 / np.tanh(1.0) if peak > 1.2 else mix * 0.95 / peak
+    # soft-knee limiter: keep sample peaks under -5 dBFS so the AAC true peak stays below -4 dBFS
+    ceil = 10 ** (-5 / 20)
+    a = np.abs(mix)
+    over = a > ceil * 0.7
+    knee = ceil * 0.7
+    mix[over] = np.sign(mix[over]) * (knee + (ceil - knee) * np.tanh((a[over] - knee) / (ceil - knee)))
     pcm = (np.clip(mix, -1, 1) * 32767).astype(np.int16)
     import wave
 

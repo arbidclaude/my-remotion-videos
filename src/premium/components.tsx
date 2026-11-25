@@ -82,7 +82,7 @@ export const Kinetic: React.FC<{
                           opacity: clamp(cp * 1.8) * (1 - e),
                           transform: `translateY(${cty}px)`,
                           filter: cp < 0.95 ? `blur(${(1 - cp) * 4}px)` : undefined,
-                          textShadow: isAccent && accentGlow ? `0 8px 30px ${accent}40` : `0 10px 30px rgba(80,55,25,0.1)`,
+                          textShadow: `0 10px 30px rgba(80,55,25,0.1)`,
                         }}
                       >
                         {ch}
@@ -102,7 +102,7 @@ export const Kinetic: React.FC<{
                   transform: `translateY(${ty}px)`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                   color: isAccent ? accent : undefined,
-                  textShadow: isAccent && accentGlow ? `0 6px ${26 * op}px ${accent}40` : `0 10px 30px rgba(80,55,25,${0.1 * op})`,
+                  textShadow: `0 10px 30px rgba(80,55,25,${0.1 * op})`,
                   backgroundImage: isAccent
                     ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, ${hi} ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
                     : undefined,
@@ -209,7 +209,7 @@ export const Ambience: React.FC<{ t: number; tint: string; tint2?: string; stren
         height: 1000,
         borderRadius: "50%",
         background: `radial-gradient(circle, ${tint2}55 0%, transparent 65%)`,
-        opacity: 0.55 * strength,
+        opacity: 0.3 * strength,
         filter: "blur(30px)",
       }}
     />
@@ -222,7 +222,7 @@ export const Ambience: React.FC<{ t: number; tint: string; tint2?: string; stren
         height: 1100,
         borderRadius: "50%",
         background: `radial-gradient(circle, ${tint}33 0%, transparent 65%)`,
-        opacity: 0.6 * strength,
+        opacity: 0.3 * strength,
         filter: "blur(30px)",
       }}
     />
