@@ -205,7 +205,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
         </defs>
         <g mask="url(#edge)">
           {grid}
-          {[0, 30, 60].map((v) => (
+          {[0, 30].map((v) => (
             <text key={v} x={104} y={P.sy(WY(v)) - 10} fontFamily="JetBrains Mono" fontSize={22} fill={INK} opacity={0.45}>
               {v}
             </text>
@@ -454,13 +454,20 @@ const Terminal: React.FC<{ t: number }> = ({ t }) => {
 
 /* tip card with swapping content */
 const TIPS: [number, number, string, string, string, string][] = [
-  [26.0, 28.15, "TIP 01", "Past papers,|again and again.", GREEN, "doc"],
+  [26.0, 28.15, "TIP 01", "Studied in the|early mornings.", GREEN, "sun"],
   [28.37, 30.55, "TIP 02", "Used AI to explain|anything I didn't understand.", GREEN, "spark"],
   [30.79, 32.95, "TIP 03", "Locked in when|the exam got close.", GREEN, "clock"],
   [33.2, 35.35, "PRO TIP", "Lock in earlier|than I did.", YELLOW, "bolt"],
 ];
 const Icon: React.FC<{ kind: string; color: string }> = ({ kind, color }) => {
   const s = { stroke: color, strokeWidth: 3, fill: "none", strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (kind === "sun")
+    return (
+      <svg width={44} height={44} viewBox="0 0 44 44">
+        <path d="M12 30a10 10 0 0 1 20 0" {...s} />
+        <path d="M5 34h34M22 10v5M9.5 17.5l3.5 3.5M34.5 17.5L31 21M4 30h3M37 30h3" {...s} />
+      </svg>
+    );
   if (kind === "doc")
     return (
       <svg width={44} height={44} viewBox="0 0 44 44">
