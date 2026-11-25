@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { AbsoluteFill, Audio, continueRender, delayRender, staticFile, useCurrentFrame } from "remotion";
-import { measureText } from "@remotion/layout-utils";
 import "../premium/fonts";
 import timeline from "./timeline.json";
 
@@ -649,7 +648,10 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
   const p = t > 37.95 ? 1 : cd(t);
   const val = Math.round(p * 8000);
   const vel = (cd(t + 0.033) - cd(t)) * 8000;
-  const handOver = prog(t, 37.75, 38.3, easeInOut);
+  // particles gather over a dimmed number, then dissolve into the crisp solid text
+  const dim = prog(t, 36.9, 37.3, easeInOut) * (1 - prog(t, 38.15, 38.55, easeInOut));
+  const plus = prog(t, 38.3, 38.75, easeOutBack);
+  const glint = prog(t, 38.6, 39.6, easeInOut);
   const blurY = Math.min(10, vel / 30);
   const inP = prog(t, DROP, DROP + 0.5, easeOutExpo);
   const out = prog(t, 40.0, 40.45, easeInExpo);
@@ -671,11 +673,22 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
           letterSpacing: "-0.055em",
           color: INK,
           fontVariantNumeric: "tabular-nums",
-          opacity: inP * (1 - handOver),
+          opacity: inP * (1 - 0.7 * dim),
           textShadow: "0 18px 40px rgba(80,55,25,0.12)",
         }}
       >
-        <span style={{ filter: blurY > 0.3 ? `blur(${blurY * 0.3}px)` : undefined, display: "inline-block" }}>{val.toLocaleString("en-US")}</span>
+        <span
+          style={{
+            filter: blurY > 0.3 ? `blur(${blurY * 0.3}px)` : undefined,
+            display: "inline-block",
+            backgroundImage: `linear-gradient(100deg, ${INK} ${glint * 150 - 50}%, ${BLUE} ${glint * 150 - 30}%, ${INK} ${glint * 150 - 10}%)`,
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          {val.toLocaleString("en-US")}
+        </span>
+        <span style={{ display: "inline-block", color: BLUE, marginLeft: 6, transform: `scale(${plus})`, opacity: clamp(plus * 2) }}>+</span>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: CY + 120, textAlign: "center", fontFamily: SANS }}>
         <div style={{ fontSize: 50, fontWeight: 600, color: INK, letterSpacing: "-0.02em", opacity: sub1, transform: `translateY(${(1 - sub1) * 24}px)`, filter: `blur(${(1 - sub1) * 8}px)` }}>
@@ -699,7 +712,14 @@ const Formation: React.FC<{ t: number }> = ({ t }) => {
   const [handle] = useState(() => delayRender("sample formation"));
   useLayoutEffect(() => {
     let done = false;
-    document.fonts.load("800 220px Inter").then(() => {
+    const ready = async () => {
+      // wait until the real face is usable, so no render tab ever samples a fallback font
+      for (let k = 0; k < 50 && !document.fonts.check("800 220px Inter"); k++) {
+        await document.fonts.load("800 220px Inter");
+        await new Promise((r) => setTimeout(r, 20));
+      }
+    };
+    ready().then(() => {
       if (done) return;
       const c = document.createElement("canvas");
       c.width = 1080;
@@ -735,7 +755,8 @@ const Formation: React.FC<{ t: number }> = ({ t }) => {
       done = true;
     };
   }, [handle]);
-  if (t < DROP || t > 41.1 || !pts.length) return null;
+  if (t < DROP || t > 38.7 || !pts.length) return null;
+  const fadeOut = 1 - prog(t, 38.2, 38.62, easeInOut);
   const R = 900;
   const pos = (tt: number, p: Pt, i: number) => {
     const a = rand(i * 3.17 + 0.5) * Math.PI * 2;
@@ -758,19 +779,16 @@ const Formation: React.FC<{ t: number }> = ({ t }) => {
     const k = easeInExpo(clamp((tt - 40.25) / 0.75));
     return [lerp(x, CX, k), lerp(y, CY, k)];
   };
-  const gx = lerp(CX - 520, CX + 520, prog(t, 38.55, 39.55, easeInOut));
-  const glintOn = t > 38.5 && t < 39.7;
   return (
     <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
       {pts.map((p, i) => {
         const [x1, y1] = pos(t, p, i);
         const [x0, y0] = pos(t - 1 / FPS, p, i);
-        const near = glintOn ? Math.max(0, 1 - Math.abs(x1 - gx) / 80) : 0;
-        const r = 2.2 + near * 1.6;
-        const col = p.plus ? BLUE : near > 0.3 ? "#3D63D9" : "#2A2F45";
+        const r = 2.2;
+        const col = p.plus ? BLUE : "#2A2F45";
         // streak alpha falls with its length, so fast particles read as light, not ink scribbles
         const len = Math.hypot(x1 - x0, y1 - y0);
-        const op = 0.9 * Math.min(1, Math.sqrt(5 / Math.max(5, len)));
+        const op = 0.9 * Math.min(1, Math.sqrt(5 / Math.max(5, len))) * fadeOut;
         const w = len > 6 ? r * 1.1 : r * 2;
         return <line key={i} x1={x0} y1={y0} x2={x1 + 0.01} y2={y1} stroke={col} strokeWidth={w} strokeLinecap="round" opacity={op} />;
       })}
@@ -788,27 +806,15 @@ const SLOT = 34;
 const SLOT_GAP = 8;
 const Ending: React.FC<{ t: number }> = ({ t }) => {
   const ref = useRef<HTMLSpanElement>(null);
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-  const [handle] = useState(() => delayRender("measure title"));
-  useLayoutEffect(() => {
-    let done = false;
-    document.fonts.load(`800 ${TS}px Inter`).then(() => {
-      if (done) return;
-      const m = measureText({ text: "Grades", fontFamily: "Inter", fontWeight: "800", fontSize: TS, letterSpacing: "-0.05em", validateFontIsLoaded: true });
-      const lineW = m.width + SLOT_GAP + SLOT;
-      // line 2 is centred; the slot sits at its right end, on the baseline
-      setAnchor({ x: CX + lineW / 2 - SLOT / 2, y: TITLE_TOP + TS + TS * 0.86 - SLOT / 2 });
-      continueRender(handle);
-    });
-    return () => {
-      done = true;
-    };
-  }, [handle]);
+  // Full-stop slot centre, measured once in a clean browser with the real Inter 800 file
+  // ("Grades" = 507.4 px wide at 156 px, -0.05em). Fixed here so every render tab agrees
+  // (measuring per tab made the dot alternate between two positions -> visible shake).
+  const anchor = { x: 805.7, y: TITLE_TOP + TS + 125 };
 
   const show = t > 40.5;
   const dotIn = prog(t, 40.55, 41.0, easeOutExpo);
   const fly = prog(t, TITLE_AT + 0.1, TITLE_AT + 0.75, easeInOut);
-  const end = anchor ?? { x: 860, y: 1010 };
+  const end = anchor;
   const arcY = -140 * Math.sin(Math.PI * fly);
   const dx = lerp(CX, end.x, fly);
   const dy = lerp(CY, end.y, fly) + arcY;
