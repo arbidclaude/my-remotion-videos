@@ -186,6 +186,13 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
           <mask id="areaMask" maskUnits="userSpaceOnUse" x={-200} y={top - 100} width={1500} height={base - top + 200}>
             <rect x={-200} y={top} width={1500} height={base - top} fill="url(#fadeV)" />
           </mask>
+          <linearGradient id="sf" gradientUnits="userSpaceOnUse" x1={gx1} x2={gx1 + 320} y1={0} y2={0}>
+            <stop offset="0" stopColor="#fff" stopOpacity={0} />
+            <stop offset="1" stopColor="#fff" stopOpacity={1} />
+          </linearGradient>
+          <mask id="startFade" maskUnits="userSpaceOnUse" x={-2000} y={-2000} width={6000} height={6000}>
+            <rect x={-2000} y={-2000} width={6000} height={6000} fill="url(#sf)" />
+          </mask>
           <mask id="edge" maskUnits="userSpaceOnUse" x={0} y={0} width={1080} height={1920}>
             <rect x={0} y={0} width={1080} height={1920} fill="url(#fadeH)" />
           </mask>
@@ -197,7 +204,9 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
           {grid}
           {/* 60/60 target line */}
           <line x1={-20} x2={1100} y1={top} y2={top} stroke={YELLOW} strokeOpacity={0.35 + P.r * 0.3} strokeDasharray="10 10" strokeWidth={2} />
-          <path d={area} fill="url(#lg)" opacity={0.2 * clamp(hx * 9)} mask="url(#areaMask)" />
+          <g mask="url(#startFade)">
+            <path d={area} fill="url(#lg)" opacity={0.15 * clamp(hx * 9)} mask="url(#areaMask)" />
+          </g>
           <path d={line} fill="none" stroke="url(#lg)" strokeWidth={14} opacity={0.22} filter="url(#glow)" />
           <path d={line} fill="none" stroke="url(#lg)" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
         </g>
@@ -676,11 +685,7 @@ export const V2: React.FC = () => {
         <Title t={t} />
       </AbsoluteFill>
       <Flash t={t} at={1.81} color={RED} peak={0.08} dur={0.5} />
-      <Sparkles t={t} at={1.95} x={700} y={TY + 50} color={RED} n={8} spread={150} seed={1} />
-      <Sparkles t={t} at={23.2} x={760} y={TY + 50} color={GREEN} n={9} spread={170} seed={2} />
-      <Sparkles t={t} at={38.6} x={700} y={TY + 50} color={ORANGE} n={9} spread={170} seed={3} />
       <Sparkles t={t} at={44.95} x={470} y={TY - 40} color={YELLOW} n={14} spread={260} seed={4} />
-      <Sparkles t={t} at={49.4} x={700} y={TY + 50} color={YELLOW} n={9} spread={160} seed={5} />
       <Sparkles t={t} at={51.9} x={760} y={1340} color={YELLOW} n={12} spread={220} seed={6} />
       <Flash t={t} at={4.23} color="#FFFFFF" peak={0.5} dur={0.6} />
       <Flash t={t} at={35.62} color={ORANGE} peak={0.18} dur={0.6} />

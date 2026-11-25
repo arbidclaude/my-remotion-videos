@@ -49,28 +49,29 @@ export const Kinetic: React.FC<{
       }}
     >
       {lines.map((line, li) => (
-        <div key={li} style={{ whiteSpace: "nowrap" }}>
-          {line.split(" ").map((raw, wi) => {
+        // mask: each line hides its words below a clean baseline (padding keeps descenders + glow unclipped)
+        <div key={li} style={{ whiteSpace: "nowrap", overflow: "hidden", padding: "0.06em 0.3em 0.16em", margin: "-0.06em 0 -0.16em" }}>
+          {line.split(" ").map((raw, wi, arr) => {
             const isAccent = raw.startsWith("*");
             const word = raw.replace(/\*/g, "");
             const i = idx++;
-            const start = inAt + i * stagger + (isAccent ? 0.06 : 0);
-            const p = prog(t, start, start + 0.8, easeOutExpo);
-            const e = prog(t, outAt + i * 0.025, outAt + i * 0.025 + 0.45, easeInExpo);
-            const op = p * (1 - e);
-            const ty = (1 - p) * 0.5 * size + e * exitDir * 0.4 * size;
-            const blur = (1 - p) * 14 + e * 12;
-            const sc = isAccent ? 1 + (1 - p) * 0.14 : 1;
-            const rot = (1 - p) * (i % 2 ? 2.5 : -2.5);
-            const sweep = prog(t, start + 0.3, start + 1.2, easeOutExpo);
+            const start = inAt + li * 0.09 + wi * stagger * 0.8 + (isAccent ? 0.05 : 0);
+            const p = prog(t, start, start + 0.7, easeOutExpo);
+            const e = prog(t, outAt + li * 0.05 + wi * 0.02, outAt + li * 0.05 + wi * 0.02 + 0.45, easeInExpo);
+            const op = clamp(p * 1.6) * (1 - e);
+            // rise from below the mask, leave upward through it
+            const ty = (1 - p) * 1.1 * size * 1.1 + e * exitDir * 1.1 * size * 1.1;
+            const blur = (1 - p) * 5 + e * 4;
+            const sweep = prog(t, start + 0.35, start + 1.3, easeOutExpo);
+            void i;
             return (
               <span
                 key={wi}
                 style={{
                   display: "inline-block",
-                  marginRight: "0.24em",
+                  marginRight: wi === arr.length - 1 ? 0 : "0.24em",
                   opacity: op,
-                  transform: `translateY(${ty}px) scale(${sc}) rotate(${rot}deg)`,
+                  transform: `translateY(${ty}px)`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                   color: isAccent ? accent : undefined,
                   textShadow: isAccent && accentGlow ? `0 6px ${26 * op}px ${accent}40` : `0 10px 30px rgba(80,55,25,${0.1 * op})`,

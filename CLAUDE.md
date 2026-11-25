@@ -60,8 +60,9 @@ Two vertical films were rebuilt from scratch in Remotion from client cuts (`publ
   - `lib.ts`: easing curves and `smoothKeys` (monotone-cubic camera keys).
   - `components.tsx`: `Kinetic` (word-by-word blur reveal with an accent light sweep), `Decode` (scramble text), `FilmLook` (grain + vignette), `Flash`, `Orb`.
   - `fonts.ts`: Inter and JetBrains Mono, loaded from `public/fonts`.
-- **Music:** custom tracks generated with Nixly AI, saved as `public/audio/music-v1.mp3` and `music-v2.mp3`. Both are 99.4 BPM with a 2.415 s bar.
-- **Audio timelines:** `src/vN/timeline.json` holds the music edit (beat-aligned splices: `[videoStart, musicStart, musicEnd]`) and the SFX cue list.
-- **Mixing:** `python3 -I scripts/audio/mix.py src/v1/timeline.json public/audio/mix-v1.wav`. It synthesises every SFX (whooshes, risers, impacts, heartbeat, ticks, chimes, 8-bit chip…), ducks the music under impacts and normalises to −14 LUFS. Re-run it after changing any cue.
+- **Look (current):** warm white paper (`PAPER #FBF7F0`) with ink type (`INK #1C1E24`), set in `src/premium/components.tsx`. `Ambience` adds drifting dust/bokeh and slow warm light leaks, `FilmLook` adds multiply paper grain and a warm vignette, and `Sparkles` is limited to 2 key moments per film. Headlines use a masked line reveal (lines wipe up from a hidden baseline with an easeOutExpo stagger and a light blur).
+- **Music (current):** calm C-major piano tracks generated with Nixly (`public/audio/calm-v1.mp3`, `calm-v2.mp3`), modelled on the client's original track (C major, warm, low percussion). Splices use 0.8 s equal-power crossfades. The earlier energetic tracks (`music-v1/v2.mp3`) are unused.
+- **Audio timelines:** `src/vN/timeline.json` holds the music edit (`[videoStart, musicStart, musicEnd]`) and the SFX cues `[t, name, gainDb, pan, maxDur?]`. A name starting with `@` is a real recorded sample from `public/sfx/` (Mixkit free licence, see `public/sfx/ATTRIBUTION.md`); any other name is synthesised in `mix.py` (`bloom`, `swell`, `riser`, `count`, `chip`…).
+- **Mixing:** `python3 -I scripts/audio/mix.py src/v1/timeline.json public/audio/mix-v1.wav`. It ducks the music under blooms and normalises to −14 LUFS. Re-run it after changing any cue.
 - **Stills for review:** `node scripts/stills.mjs <compId> <outDir> <seconds…>`.
 - **Rendering:** pass `--browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`, because remotion.media is not reachable from the cloud container.

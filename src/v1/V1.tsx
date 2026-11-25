@@ -798,9 +798,6 @@ export const V1: React.FC = () => {
         <Starfield t={t} />
         <Counter t={t} />
         <Ending t={t} />
-        <Sparkles t={t} at={0.15} x={CX} y={CY} color={BLUE} n={7} spread={120} seed={1} />
-        <Sparkles t={t} at={15.25} x={CX} y={CY} color={BLUE} n={8} spread={160} seed={2} />
-        <Sparkles t={t} at={NODE_T[4]} x={NX} y={NY0 + 4 * NGAP} color={BLUE} n={9} spread={150} seed={3} />
         <Sparkles t={t} at={38.4} x={880} y={CY - 50} color={BLUE} n={10} spread={170} seed={4} />
       </Camera>
       {/* headlines float on their own layer (subtle counter-parallax) */}

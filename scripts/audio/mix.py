@@ -289,8 +289,23 @@ def main(tl_path, out_path):
 
     sfx = np.zeros((N, 2))
     duck = np.ones(N)
-    for t, name, gdb, pan in tl["sfx"]:
-        s = BANK[name]()
+    cache = {}
+    for cue in tl["sfx"]:
+        t, name, gdb, pan = cue[:4]
+        maxd = cue[4] if len(cue) > 4 else None
+        if name.startswith("@"):
+            # real recorded sample from public/sfx (mono-summed, optional trim with soft tail)
+            if name not in cache:
+                cache[name] = load_music(f"public/sfx/{name[1:]}.mp3").mean(axis=1)
+            s = cache[name].copy()
+            if maxd:
+                n = min(len(s), int(maxd * SR))
+                s = s[:n]
+                tail = min(n, int(0.35 * SR))
+                s[-tail:] *= np.linspace(1, 0, tail)
+            s = s / (np.max(np.abs(s)) + 1e-9) * 0.9
+        else:
+            s = BANK[name]()
         g = 10 ** (gdb / 20)
         st = int(t * SR)
         if name.startswith("riser") or name == "suck":
