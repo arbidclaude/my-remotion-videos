@@ -3,12 +3,12 @@ import { AbsoluteFill, Audio, continueRender, delayRender, staticFile, useCurren
 import { measureText } from "@remotion/layout-utils";
 import "../premium/fonts";
 import { MONO, SANS } from "../premium/fonts";
-import { Flash, FilmLook, Kinetic, Orb } from "../premium/components";
+import { Ambience, Flash, FilmLook, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
 import { FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
 const VIOLET = "#9B7BFF";
-const BG = "#070A14";
+const BG = PAPER;
 const CX = 540;
 const CY = 740; // hero line
 const TY = 1235; // headline baseline zone
@@ -60,17 +60,17 @@ const Backdrop: React.FC<{ t: number }> = ({ t }) => {
   const explode = t > 36.2 && t < 40.5 ? Math.min(1, (t - 36.2) / 0.3) * (1 - prog(t, 39.6, 40.5)) : 0;
   return (
     <AbsoluteFill style={{ background: BG }}>
-      <AbsoluteFill style={{ background: "radial-gradient(120% 75% at 50% 36%, #101836 0%, #090D1C 50%, #05070D 100%)" }} />
-      <Orb x={CX + Math.sin(t * 0.21) * 120} y={CY - 60 + Math.cos(t * 0.17) * 80} r={620} color="rgba(70,110,255,0.20)" opacity={pulse} />
-      <Orb x={CX - 260 + Math.sin(t * 0.13) * 90} y={1380} r={520} color="rgba(130,90,255,0.10)" />
-      <Orb x={CX} y={CY} r={900} color="rgba(120,160,255,0.35)" opacity={explode} />
+      <AbsoluteFill style={{ background: "radial-gradient(120% 75% at 50% 36%, #FFFDF9 0%, #FAF5EC 55%, #EFE5D5 100%)" }} />
+      <Orb x={CX + Math.sin(t * 0.21) * 120} y={CY - 60 + Math.cos(t * 0.17) * 80} r={620} color="rgba(91,140,255,0.10)" opacity={pulse} />
+      <Orb x={CX - 260 + Math.sin(t * 0.13) * 90} y={1380} r={520} color="rgba(255,170,110,0.16)" />
+      <Orb x={CX} y={CY} r={900} color="rgba(91,140,255,0.16)" opacity={explode} />
       {/* parallax grid */}
       <AbsoluteFill
         style={{
           transformOrigin: `${CX}px ${CY}px`,
           transform: `scale(${1 + (s - 1) * 0.45})`,
           backgroundImage:
-            "linear-gradient(rgba(140,170,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(140,170,255,0.05) 1px, transparent 1px)",
+            "linear-gradient(rgba(70,55,40,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(70,55,40,0.055) 1px, transparent 1px)",
           backgroundSize: "90px 90px",
           backgroundPosition: `${45}px ${(t * 6) % 90}px`,
           WebkitMaskImage: "radial-gradient(ellipse 70% 55% at 50% 40%, black 0%, transparent 75%)",
@@ -84,7 +84,7 @@ const Backdrop: React.FC<{ t: number }> = ({ t }) => {
 /* ================================================================== */
 /* The hero dot                                                        */
 /* ================================================================== */
-const Dot: React.FC<{ x: number; y: number; r?: number; color?: string; glow?: number; opacity?: number }> = ({ x, y, r = 11, color = "#FFFFFF", glow = 1, opacity = 1 }) => (
+const Dot: React.FC<{ x: number; y: number; r?: number; color?: string; glow?: number; opacity?: number }> = ({ x, y, r = 11, color = INK, glow = 1, opacity = 1 }) => (
   <div style={{ position: "absolute", left: x, top: y, opacity }}>
     <div
       style={{
@@ -107,13 +107,13 @@ const Dot: React.FC<{ x: number; y: number; r?: number; color?: string; glow?: n
         height: r * 2,
         borderRadius: "50%",
         background: color,
-        boxShadow: `0 0 ${r * 2}px ${color}, 0 0 ${r * 5}px ${color}88`,
+        boxShadow: `0 ${r * 0.6}px ${r * 2.2}px ${color}66, 0 0 ${r * 4}px ${color}33`,
       }}
     />
   </div>
 );
 
-const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: string; size?: number }> = ({ t, at, x, y, color = "#ffffff", size = 140 }) => {
+const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: string; size?: number }> = ({ t, at, x, y, color = INK, size = 140 }) => {
   if (t < at || t > at + 1.1) return null;
   const p = easeOutExpo(clamp((t - at) / 1.1));
   const r = 10 + p * size;
@@ -127,7 +127,7 @@ const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: st
         height: r * 2,
         borderRadius: "50%",
         border: `2px solid ${color}`,
-        opacity: (1 - p) * 0.7,
+        opacity: (1 - p) * 0.45,
       }}
     />
   );
@@ -209,7 +209,7 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
               transform: `translate(-50%, -50%) scale(${0.7 + depth * 0.6})`,
               fontFamily: MONO,
               fontSize: 34,
-              color: i % 3 === 0 ? BLUE : "#9AA6C8",
+              color: i % 3 === 0 ? BLUE : "#8C8577",
               opacity: op,
               filter: `blur(${(1.2 - depth) * 3 + (1 - ap) * 6}px)`,
             }}
@@ -222,8 +222,8 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
         <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible" }}>
           <defs>
             <linearGradient id="wg" x1="0" x2="1080" y1="0" y2="0" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#ffffff" />
-              <stop offset="0.55" stopColor="#A9C2FF" />
+              <stop offset="0" stopColor={INK} />
+              <stop offset="0.55" stopColor="#3A6BEA" />
               <stop offset="1" stopColor={BLUE} />
             </linearGradient>
             <filter id="wglow" x="-20%" y="-50%" width="140%" height="200%">
@@ -233,12 +233,12 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
           {[5, 4, 3, 2, 1].map((k) => (
             <path key={k} d={path(k)} fill="none" stroke={k % 2 ? VIOLET : BLUE} strokeWidth={2} opacity={multi * (0.55 - k * 0.07) * ampK} />
           ))}
-          <path d={path(0)} fill="none" stroke={BLUE} strokeWidth={10} opacity={0.45} filter="url(#wglow)" />
+          <path d={path(0)} fill="none" stroke={BLUE} strokeWidth={10} opacity={0.18} filter="url(#wglow)" />
           <path d={path(0)} fill="none" stroke="url(#wg)" strokeWidth={4.5} strokeLinecap="round" />
         </svg>
       )}
       <div style={{ position: "absolute", left: 0, top: 0, transform: `scale(1)` }}>
-        <Dot x={dx} y={dy} r={11 * dotScale} color={t > 6 ? "#DCE6FF" : "#ffffff"} opacity={clamp(dotOp) * dotIn} />
+        <Dot x={dx} y={dy} r={11 * dotScale} color={t > 6 ? BLUE : INK} opacity={clamp(dotOp) * dotIn} />
       </div>
       <Ripple t={t} at={0.05} x={CX} y={CY} />
       <Ripple t={t} at={15.2} x={CX} y={CY} color={BLUE} size={220} />
@@ -251,10 +251,10 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
 /* ================================================================== */
 type Tok = [string, string];
 const CODE: Tok[][] = [
-  [["while", "#C49BFF"], [" curious", "#EEF2FF"], [":", "#7C86A2"]],
-  [["    learn", "#8FB6FF"], ["()", "#7C86A2"]],
-  [["    build", "#8FB6FF"], ["()", "#7C86A2"]],
-  [["print", "#8FB6FF"], ["(", "#7C86A2"], ['"Hello, World"', "#8EE6B0"], [")", "#7C86A2"]],
+  [["while", "#7A4DFF"], [" curious", INK], [":", "#9A9FAD"]],
+  [["    learn", "#2F6BFF"], ["()", "#9A9FAD"]],
+  [["    build", "#2F6BFF"], ["()", "#9A9FAD"]],
+  [["print", "#2F6BFF"], ["(", "#9A9FAD"], ['"Hello, World"', "#169C5A"], [")", "#9A9FAD"]],
 ];
 const CODE_START = 16.0;
 const CODE_END = 19.6;
@@ -283,7 +283,7 @@ const BraceScene: React.FC<{ t: number }> = ({ t }) => {
         fontSize: 230,
         color: BLUE,
         opacity: op,
-        textShadow: `0 0 40px ${BLUE}aa`,
+        textShadow: `0 14px 40px ${BLUE}55`,
         filter: `blur(${(1 - clamp(open * 1.2)) * 12 + morph * 6}px)`,
       }}
     >
@@ -322,7 +322,7 @@ const BraceScene: React.FC<{ t: number }> = ({ t }) => {
             <div key={li} style={{ height: 51 }}>
               {shown}
               {(activeLine || (li === CODE.length - 1 && chars >= total)) && isLast && cursorOn && (
-                <span style={{ display: "inline-block", width: 3, height: 36, background: "#DCE6FF", marginLeft: 3, verticalAlign: -6, boxShadow: "0 0 10px #9db8ff" }} />
+                <span style={{ display: "inline-block", width: 3, height: 36, background: INK, marginLeft: 3, verticalAlign: -6 }} />
               )}
             </div>
           );
@@ -377,7 +377,7 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
           height={PH}
           rx={52}
           fill="none"
-          stroke="#AFC3FF"
+          stroke={BLUE}
           strokeWidth={2.5}
           strokeDasharray={per}
           strokeDashoffset={per * (1 - draw)}
@@ -392,9 +392,9 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
           width: w,
           height: h,
           borderRadius: lerp(52, 12, collapse),
-          background: collapse > 0.85 ? "#ffffff" : "linear-gradient(180deg, #141A2B 0%, #0E1320 100%)",
+          background: collapse > 0.85 ? INK : "linear-gradient(180deg, #141A2B 0%, #0E1320 100%)",
           border: "1.5px solid rgba(160,180,255,0.18)",
-          boxShadow: `0 40px 120px rgba(0,0,0,0.6), 0 0 ${60 + collapse * 60}px rgba(91,140,255,${0.12 + collapse * 0.6})`,
+          boxShadow: `0 60px 120px rgba(70,45,20,0.28), 0 18px 40px rgba(70,45,20,0.18), 0 0 ${60 + collapse * 60}px rgba(91,140,255,${0.1 + collapse * 0.4})`,
           opacity: prog(t, 21.9, 22.3),
           overflow: "hidden",
         }}
@@ -428,7 +428,7 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
             }}
           >
             <div style={{ position: "absolute", left: "50%", top: "50%" }}>
-              <Dot x={0} y={0} r={10} glow={1.2} />
+              <Dot x={0} y={0} r={10} glow={1.2} color="#FFFFFF" />
             </div>
             <div
               style={{
@@ -543,7 +543,7 @@ const Pathway: React.FC<{ t: number }> = ({ t }) => {
           top: nodes[0].y,
           width: 2,
           height: Math.max(0, (lineTo - nodes[0].y) * (1 - merge)),
-          background: `linear-gradient(180deg, rgba(255,255,255,0.5), ${BLUE})`,
+          background: `linear-gradient(180deg, rgba(28,30,36,0.35), ${BLUE})`,
           opacity: (t > 27.2 ? 1 : 0) * (1 - merge),
         }}
       />
@@ -561,7 +561,7 @@ const Pathway: React.FC<{ t: number }> = ({ t }) => {
         x = lerp(x, CX, merge);
         y = lerp(y, CY, merge);
         const lp = prog(t, at + 0.08, at + 0.8, easeOutExpo);
-        const col = isLast ? BLUE : "#FFFFFF";
+        const col = isLast ? BLUE : INK;
         return (
           <React.Fragment key={i}>
             <Dot x={x} y={y} r={(isLast ? 11 : 8) * (i === 0 && t < at ? 1 : Math.max(0.2, p))} color={col} glow={isLast ? 1.4 : 0.7} />
@@ -624,7 +624,7 @@ const Starfield: React.FC<{ t: number }> = ({ t }) => {
     const y0 = CY + Math.sin(s.a) * r0 * 1.5;
     const tw = 0.6 + 0.4 * Math.sin(t * 3 + i);
     const size = 1.1 + s.z * 2.4;
-    const col = s.blue ? "#7FA2FF" : "#E8EEFF";
+    const col = s.blue ? BLUE : "#2A2F45";
     lines.push(
       <line key={i} x1={x0} y1={y0} x2={x1 + 0.01} y2={y1} stroke={col} strokeWidth={size} strokeLinecap="round" opacity={(0.35 + s.z * 0.6) * tw} />
     );
@@ -661,10 +661,10 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
           fontWeight: 800,
           fontSize: 220,
           letterSpacing: "-0.055em",
-          color: "#fff",
+          color: INK,
           fontVariantNumeric: "tabular-nums",
           opacity: inP,
-          textShadow: "0 0 60px rgba(140,170,255,0.45)",
+          textShadow: "0 24px 60px rgba(91,140,255,0.22)",
         }}
       >
         <span style={{ filter: blurY > 0.3 ? `blur(${blurY * 0.3}px)` : undefined, display: "inline-block" }}>{val.toLocaleString("en-US")}</span>
@@ -682,10 +682,10 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
         </span>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: CY + 120, textAlign: "center", fontFamily: SANS }}>
-        <div style={{ fontSize: 50, fontWeight: 600, color: "#fff", letterSpacing: "-0.02em", opacity: sub1, transform: `translateY(${(1 - sub1) * 24}px)`, filter: `blur(${(1 - sub1) * 8}px)` }}>
+        <div style={{ fontSize: 50, fontWeight: 600, color: INK, letterSpacing: "-0.02em", opacity: sub1, transform: `translateY(${(1 - sub1) * 24}px)`, filter: `blur(${(1 - sub1) * 8}px)` }}>
           learners honoured at OPLA
         </div>
-        <div style={{ fontSize: 40, fontWeight: 500, color: "#8E98B4", marginTop: 10, opacity: sub2, transform: `translateY(${(1 - sub2) * 24}px)`, filter: `blur(${(1 - sub2) * 8}px)` }}>
+        <div style={{ fontSize: 40, fontWeight: 500, color: "#8C877D", marginTop: 10, opacity: sub2, transform: `translateY(${(1 - sub2) * 24}px)`, filter: `blur(${(1 - sub2) * 8}px)` }}>
           in Bangladesh since 2012
         </div>
       </div>
@@ -747,7 +747,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           fontSize: TS,
           lineHeight: 1.0,
           letterSpacing: "-0.05em",
-          color: "#fff",
+          color: INK,
         }}
       >
         <div style={{ opacity: tp(TITLE_AT), transform: `translateY(${(1 - tp(TITLE_AT)) * 60}px)`, filter: `blur(${(1 - tp(TITLE_AT)) * 16}px)` }}>Beyond the</div>
@@ -758,7 +758,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
               opacity: tp(TITLE_AT + 0.12),
               transform: `translateY(${(1 - tp(TITLE_AT + 0.12)) * 60}px)`,
               filter: `blur(${(1 - tp(TITLE_AT + 0.12)) * 16}px)`,
-              backgroundImage: `linear-gradient(100deg, #fff ${sweep * 150 - 50}%, #BFD0FF ${sweep * 150 - 30}%, #fff ${sweep * 150 - 10}%)`,
+              backgroundImage: `linear-gradient(100deg, ${INK} ${sweep * 150 - 50}%, ${BLUE} ${sweep * 150 - 30}%, ${INK} ${sweep * 150 - 10}%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
             }}
@@ -767,7 +767,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           </span>
           <span ref={ref} style={{ display: "inline-block", width: SLOT, height: SLOT, marginLeft: SLOT_GAP, verticalAlign: "baseline" }} />
         </div>
-        <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "0em", color: "#7F89A6", marginTop: 60, lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
+        <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "0em", color: "#8C877D", marginTop: 60, lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
           #OPLA2026&nbsp;&nbsp;#BeyondTheGrades
           <br />
           #PearsonLearnerCreator
@@ -776,6 +776,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
       {show && <Dot x={dx} y={dy} r={14 * dotIn * (fly > 0 ? 1 : beat)} color={BLUE} glow={1.5} />}
       <Ripple t={t} at={40.95} x={CX} y={CY} color={BLUE} size={200} />
       <Ripple t={t} at={TITLE_AT + 0.75} x={end.x} y={end.y} color={BLUE} size={170} />
+      <Sparkles t={t} at={TITLE_AT + 0.75} x={end.x} y={end.y} color={BLUE} n={12} spread={220} seed={5} />
     </AbsoluteFill>
   );
 };
@@ -788,6 +789,7 @@ export const V1: React.FC = () => {
     <AbsoluteFill style={{ background: BG }}>
       <Audio src={staticFile("audio/mix-v1.wav")} />
       <Backdrop t={t} />
+      <Ambience t={t} tint={BLUE} />
       <Camera t={t}>
         <WaveScene t={t} />
         <BraceScene t={t} />
@@ -796,6 +798,10 @@ export const V1: React.FC = () => {
         <Starfield t={t} />
         <Counter t={t} />
         <Ending t={t} />
+        <Sparkles t={t} at={0.15} x={CX} y={CY} color={BLUE} n={7} spread={120} seed={1} />
+        <Sparkles t={t} at={15.25} x={CX} y={CY} color={BLUE} n={8} spread={160} seed={2} />
+        <Sparkles t={t} at={NODE_T[4]} x={NX} y={NY0 + 4 * NGAP} color={BLUE} n={9} spread={150} seed={3} />
+        <Sparkles t={t} at={38.4} x={880} y={CY - 50} color={BLUE} n={10} spread={170} seed={4} />
       </Camera>
       {/* headlines float on their own layer (subtle counter-parallax) */}
       <AbsoluteFill style={{ transform: `translateY(${(camScale(t) - 1) * -40}px)` }}>
@@ -811,10 +817,10 @@ export const V1: React.FC = () => {
         <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.45} accent={BLUE} y={1010} />
       </AbsoluteFill>
-      <Flash t={t} at={DROP} color="#BFD0FF" peak={0.55} dur={0.7} />
+      <Flash t={t} at={DROP} color="#BCD0FF" peak={0.5} dur={0.8} />
       <Flash t={t} at={TITLE_AT + 0.75} color="#9DB6FF" peak={0.18} dur={0.6} />
-      <FilmLook grain={0.08} vignette={0.7} />
-      <AbsoluteFill style={{ background: "#000", opacity: 1 - prog(t, 0, 0.5, easeOut) }} />
+      <FilmLook />
+      <AbsoluteFill style={{ background: PAPER, opacity: 1 - prog(t, 0, 0.6, easeOut) }} />
     </AbsoluteFill>
   );
 };

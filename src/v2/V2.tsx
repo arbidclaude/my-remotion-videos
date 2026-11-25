@@ -2,17 +2,17 @@ import React from "react";
 import { AbsoluteFill, Audio, staticFile, useCurrentFrame } from "remotion";
 import "../premium/fonts";
 import { MONO, SANS } from "../premium/fonts";
-import { Decode, Flash, FilmLook, Kinetic, Orb } from "../premium/components";
+import { Ambience, Decode, Flash, FilmLook, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
 import { FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
 
-const BG = "#090B0F";
-const WHITE = "#F3F5F8";
-const RED = "#FF4D6D";
-const GREEN = "#34E39A";
-const YELLOW = "#FFC845";
-const ORANGE = "#FF8A4C";
+const BG = PAPER;
+const WHITE = INK; // ink on paper
+const RED = "#E8364F";
+const GREEN = "#13B26B";
+const YELLOW = "#E3A008";
+const ORANGE = "#EE7430";
 const TY = 1335;
 
 /* ================================================================== */
@@ -46,7 +46,7 @@ const WX = (x: number) => x * WW;
 const WY = (s: number) => ((60 - s) / 60) * HH;
 
 const STOPS: [number, string][] = [
-  [0, WHITE], [0.12, WHITE], [0.21, "#FF9AAE"], [0.3, RED], [0.49, RED], [0.535, GREEN], [0.79, GREEN], [0.88, "#FFB347"], [1, YELLOW],
+  [0, "#3A3D47"], [0.12, "#3A3D47"], [0.21, "#EF6A82"], [0.3, RED], [0.49, RED], [0.535, GREEN], [0.79, GREEN], [0.88, "#FFB347"], [1, YELLOW],
 ];
 const colorAt = (x: number) => {
   for (let i = 0; i < STOPS.length - 1; i++) {
@@ -59,8 +59,8 @@ const colorAt = (x: number) => {
 
 /* chapter tint for the room light */
 const TINTS: [number, string][] = [
-  [0, "#2A3345"], [8.6, "#2A3345"], [9.4, "#4A1C28"], [13.6, "#4A1C28"], [14.2, "#5A1420"], [20.4, "#3A1A22"],
-  [21.4, "#123A2C"], [35.3, "#123A2C"], [35.9, "#4A2A12"], [42.6, "#4A2A12"], [43.2, "#4A3A10"], [54, "#2E2A1C"],
+  [0, "#F4EEE4"], [8.6, "#F4EEE4"], [9.4, "#FBE6E6"], [13.6, "#FBE6E6"], [14.2, "#F8D8DC"], [20.4, "#F6E3E3"],
+  [21.4, "#DDF3E6"], [35.3, "#DDF3E6"], [35.9, "#FDE8D6"], [42.6, "#FDE8D6"], [43.2, "#FFF0C8"], [54, "#F7EFDF"],
 ];
 const tintAt = (t: number) => {
   for (let i = 0; i < TINTS.length - 1; i++) {
@@ -137,11 +137,11 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
   for (let i = 0; i <= 20; i++) {
     const X = P.sx((WW * i) / 20);
     if (X < -50 || X > 1130) continue;
-    grid.push(<line key={`v${i}`} x1={X} x2={X} y1={top} y2={base} stroke="#ffffff" strokeOpacity={0.05} />);
+    grid.push(<line key={`v${i}`} x1={X} x2={X} y1={top} y2={base} stroke={INK} strokeOpacity={0.06} />);
   }
   for (let s = 0; s <= 50; s += 10) {
     const Y = P.sy(WY(s));
-    grid.push(<line key={`h${s}`} x1={-20} x2={1100} y1={Y} y2={Y} stroke="#ffffff" strokeOpacity={s === 0 ? 0.14 : 0.05} />);
+    grid.push(<line key={`h${s}`} x1={-20} x2={1100} y1={Y} y2={Y} stroke={INK} strokeOpacity={s === 0 ? 0.16 : 0.06} />);
   }
 
   // milestones (placed where the head was at that moment)
@@ -198,7 +198,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
           {/* 60/60 target line */}
           <line x1={-20} x2={1100} y1={top} y2={top} stroke={YELLOW} strokeOpacity={0.35 + P.r * 0.3} strokeDasharray="10 10" strokeWidth={2} />
           <path d={area} fill="url(#lg)" opacity={0.2 * clamp(hx * 9)} mask="url(#areaMask)" />
-          <path d={line} fill="none" stroke="url(#lg)" strokeWidth={14} opacity={0.35} filter="url(#glow)" />
+          <path d={line} fill="none" stroke="url(#lg)" strokeWidth={14} opacity={0.22} filter="url(#glow)" />
           <path d={line} fill="none" stroke="url(#lg)" strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
         </g>
 
@@ -214,7 +214,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
                 y={hyS - 150 - i * 26 + bob - (1 - p) * 60}
                 s={0.9 * p}
                 rot={-12 + i * 12}
-                color={i === 1 ? RED : "#C9CED8"}
+                color={i === 1 ? RED : "#B9BDC7"}
                 op={p * (1 - ctrlOut) * ctrlIn}
               />
             );
@@ -241,7 +241,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
             <g key={i} transform={`translate(${m.x},${m.y - 46})`} opacity={clamp(p * 2) * (1 - P.r * 0.6)}>
               <line x1={0} y1={18} x2={0} y2={46} stroke={GREEN} strokeOpacity={0.5} strokeWidth={2} />
               <circle r={18 * p} fill={GREEN} />
-              <text y={7} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={18} fontWeight={500} fill="#062015">
+              <text y={7} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={18} fontWeight={500} fill="#FFFFFF">
                 {i + 1}
               </text>
             </g>
@@ -255,7 +255,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
               <g transform={`translate(${m.x},${m.y - 70})`} opacity={clamp(p * 2) * (1 - P.r * 0.6)}>
                 <circle r={20 * p} fill={YELLOW} />
                 <circle r={34 * p} fill="none" stroke={YELLOW} strokeOpacity={0.3} />
-                <text y={8} textAnchor="middle" fontFamily="Inter" fontWeight={800} fontSize={22} fill="#2A1E00">
+                <text y={8} textAnchor="middle" fontFamily="Inter" fontWeight={800} fontSize={22} fill="#FFFFFF">
                   !
                 </text>
               </g>
@@ -333,7 +333,8 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
         )}
 
         {/* head */}
-        <circle cx={hxS} cy={hyS} r={26} fill={headCol} opacity={0.25} filter="url(#glow)" />
+        <circle cx={hxS} cy={hyS} r={26} fill={headCol} opacity={0.3} filter="url(#glow)" />
+        <circle cx={hxS} cy={hyS} r={14 + 4 * Math.sin(t * 4)} fill="none" stroke={headCol} strokeOpacity={0.35} strokeWidth={1.5} />
         <circle cx={hxS} cy={hyS} r={9 * prog(t, 4.35, 4.75, easeOutBack)} fill={headCol} />
         <circle cx={hxS} cy={hyS} r={4} fill="#fff" opacity={0.9} />
         {/* summit burst */}
@@ -380,7 +381,14 @@ const CHAPTERS: [number, string, string][] = [
   [42.86, "07", "RESULTS"],
   [48.9, "08", "YOUR TURN"],
 ];
-const CH_COL = [WHITE, RED, RED, GREEN, GREEN, ORANGE, YELLOW, YELLOW];
+const CH_COL = ["#5B6070", RED, RED, GREEN, GREEN, ORANGE, YELLOW, YELLOW];
+const chapterIdx = (t: number) => {
+  let idx = 0;
+  CHAPTERS.forEach(([at], i) => {
+    if (t >= at) idx = i;
+  });
+  return idx;
+};
 
 const ChapterLabel: React.FC<{ t: number }> = ({ t }) => {
   if (t < 4.6 || t > 51.2) return null;
@@ -393,12 +401,12 @@ const ChapterLabel: React.FC<{ t: number }> = ({ t }) => {
   const line = prog(t, at, at + 0.6, easeOutExpo);
   return (
     <div style={{ position: "absolute", left: 80, top: 230, opacity: 1 - out }}>
-      <div style={{ fontSize: 30, letterSpacing: 4, color: "#AEB6C6", display: "flex", gap: 16, alignItems: "center" }}>
+      <div style={{ fontSize: 30, letterSpacing: 4, color: "#6B6F7A", display: "flex", gap: 16, alignItems: "center" }}>
         <Decode t={t} text={num} at={at} dur={0.3} style={{ color: CH_COL[idx], fontWeight: 500 }} />
         <span style={{ width: 36 * line, height: 2, background: CH_COL[idx], display: "inline-block", opacity: 0.8 }} />
         <Decode t={t} text={name} at={at + 0.08} dur={0.55} />
       </div>
-      <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: "#6E778A" }}>
+      <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: "#9A968E" }}>
         SCORE <span style={{ color: YELLOW, marginLeft: 10 }}>60 / 60</span>
       </div>
     </div>
@@ -417,7 +425,7 @@ const Terminal: React.FC<{ t: number }> = ({ t }) => {
         const n = Math.floor(clamp((t - at) / 0.42) * txt.length);
         const cursor = n < txt.length || i === lines.length - 1;
         return (
-          <div key={i} style={{ opacity: 0.55 + 0.45 * (i === lines.length - 1 ? 1 : 0.6), textShadow: `0 0 16px ${RED}88` }}>
+          <div key={i} style={{ opacity: 0.55 + 0.45 * (i === lines.length - 1 ? 1 : 0.6), textShadow: `0 4px 14px ${RED}33` }}>
             {txt.slice(0, n)}
             {cursor && Math.floor(t * 4) % 2 === 0 && <span style={{ background: RED, color: RED }}>_</span>}
           </div>
@@ -482,9 +490,9 @@ const TipCard: React.FC<{ t: number }> = ({ t }) => {
         top: TY - 95,
         height: 190,
         borderRadius: 34,
-        background: "linear-gradient(180deg, rgba(28,34,40,0.92), rgba(18,22,27,0.92))",
-        border: `1.5px solid ${accentIsYellow ? "rgba(255,200,69,0.35)" : "rgba(255,255,255,0.08)"}`,
-        boxShadow: `0 30px 80px rgba(0,0,0,0.5), 0 0 60px ${col}${accentIsYellow ? "33" : "14"}`,
+        background: "linear-gradient(180deg, #FFFFFF, #FCF8F2)",
+        border: `1.5px solid ${accentIsYellow ? "rgba(227,160,8,0.35)" : "rgba(60,45,30,0.08)"}`,
+        boxShadow: `0 34px 80px rgba(90,60,25,0.16), 0 8px 22px rgba(90,60,25,0.08), 0 0 60px ${col}${accentIsYellow ? "22" : "10"}`,
         opacity: cardIn * (1 - cardOut),
         transform: `translateY(${(1 - cardIn) * 50 + cardOut * 30}px) scale(${lerp(0.94, 1, cardIn)})`,
         filter: cardOut ? `blur(${cardOut * 10}px)` : undefined,
@@ -524,7 +532,7 @@ const Bubble: React.FC<{ t: number; at: number; outAt: number; who: string; text
   return (
     <div style={{ position: "absolute", left: x, top: y, opacity: clamp(p * 1.5) * (1 - o), transform: `translateY(${(1 - p) * 30 - o * 20}px) scale(${lerp(0.8, 1, p)})`, transformOrigin: "0% 100%", filter: o ? `blur(${o * 8}px)` : undefined }}>
       {who && <div style={{ fontFamily: MONO, fontSize: 22, letterSpacing: 3, color, marginBottom: 12, marginLeft: 6 }}>{who}</div>}
-      <div style={{ display: "inline-block", padding: "20px 32px", borderRadius: 30, borderBottomLeftRadius: 8, background: "rgba(34,40,48,0.95)", border: `1.5px solid ${color}40`, fontFamily: SANS, fontWeight: 600, fontSize: size, letterSpacing: "-0.02em", color: WHITE, boxShadow: `0 20px 50px rgba(0,0,0,0.45), 0 0 40px ${color}22` }}>
+      <div style={{ display: "inline-block", padding: "20px 32px", borderRadius: 30, borderBottomLeftRadius: 8, background: "#FFFFFF", border: `1.5px solid ${color}40`, fontFamily: SANS, fontWeight: 600, fontSize: size, letterSpacing: "-0.02em", color: WHITE, boxShadow: `0 24px 50px rgba(90,60,25,0.15), 0 6px 16px rgba(90,60,25,0.08)` }}>
         {text}
       </div>
     </div>
@@ -547,13 +555,13 @@ const IntroHUD: React.FC<{ t: number }> = ({ t }) => {
         {new Array(10).fill(0).map((_, i) => {
           const on = prog(t, 0.25 + i * 0.05, 0.4 + i * 0.05);
           const alive = i < hpCount;
-          const col = drain > 0 ? (alive ? RED : "#2A2F38") : GREEN;
+          const col = drain > 0 ? (alive ? RED : "#E2DCD2") : GREEN;
           return <div key={i} style={{ width: 44, height: 22, borderRadius: 3, background: col, opacity: on, boxShadow: alive ? `0 0 12px ${col}88` : undefined }} />;
         })}
         <span style={{ fontFamily: MONO, fontSize: 20, color: drain > 0 ? RED : GREEN, marginLeft: 10 }}>HP</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", marginTop: 12 }}>
-        <div style={{ width: 500, height: 6, borderRadius: 3, background: "#22262E", position: "relative" }}>
+        <div style={{ width: 500, height: 6, borderRadius: 3, background: "#E6DFD3", position: "relative" }}>
           <div style={{ position: "absolute", left: 0, top: 0, height: 6, borderRadius: 3, width: 500 * xp, background: YELLOW, boxShadow: `0 0 12px ${YELLOW}` }} />
         </div>
         <span style={{ fontFamily: MONO, fontSize: 20, color: YELLOW, marginLeft: 16 }}>XP</span>
@@ -566,7 +574,7 @@ const PressStart: React.FC<{ t: number }> = ({ t }) => {
   if (t < 0.8 || t > 4.0) return null;
   const blink = Math.floor((t - 0.8) * 2.4) % 2 === 0 ? 1 : 0.25;
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, top: 1560, textAlign: "center", fontFamily: MONO, fontSize: 28, letterSpacing: 6, color: "#9AA2B2", opacity: blink * prog(t, 0.8, 1.2) * (1 - prog(t, 3.6, 3.95)) }}>
+    <div style={{ position: "absolute", left: 0, right: 0, top: 1560, textAlign: "center", fontFamily: MONO, fontSize: 28, letterSpacing: 6, color: "#8C877D", opacity: blink * prog(t, 0.8, 1.2) * (1 - prog(t, 3.6, 3.95)) }}>
       ▶ PRESS START
     </div>
   );
@@ -585,10 +593,10 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined }}>
       <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1 }}>
-        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? `0 0 70px ${YELLOW}88` : undefined }}>{val}</span>
-        <span style={{ fontSize: 110, color: "#7A8294", marginLeft: 10 }}>/60</span>
+        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? `0 24px 60px ${YELLOW}55` : undefined }}>{val}</span>
+        <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
       </div>
-      <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#C9CED8", marginTop: 20, opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
+      <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#5E5B55", marginTop: 20, opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
       <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 38, color: YELLOW, marginTop: 6, opacity: prog(t, 45.15, 45.8, easeOutExpo) }}>Mathematics</div>
     </div>
   );
@@ -601,7 +609,7 @@ const Title: React.FC<{ t: number }> = ({ t }) => {
   return (
     <>
       <Kinetic t={t} text="Beyond the|*Grades.*" inAt={51.3} outAt={99} accent={YELLOW} y={1280} size={156} weight={800} stagger={0.1} />
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1480, textAlign: "center", fontFamily: SANS, fontWeight: 500, fontSize: 34, color: "#7D8596", lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1480, textAlign: "center", fontFamily: SANS, fontWeight: 500, fontSize: 34, color: "#8C877D", lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
         #OPLA2026&nbsp;&nbsp;#BeyondTheGrades
         <br />
         #PearsonLearnerCreator
@@ -637,8 +645,9 @@ export const V2: React.FC = () => {
       <Audio src={staticFile("audio/mix-v2.wav")} />
       {/* room light */}
       <AbsoluteFill style={{ background: `radial-gradient(110% 70% at 60% 38%, ${tint} 0%, ${BG} 62%)` }} />
-      <Orb x={760 + Math.sin(t * 0.2) * 120} y={700} r={700} color={`${tint}`} opacity={0.55} />
-      <AbsoluteFill style={{ boxShadow: `inset 0 0 260px rgba(255,40,70,${redPulse})` }} />
+      <Orb x={760 + Math.sin(t * 0.2) * 120} y={700} r={700} color={`${tint}`} opacity={0.9} />
+      <Ambience t={t} tint={CH_COL[chapterIdx(t)]} />
+      <AbsoluteFill style={{ boxShadow: `inset 0 0 260px rgba(232,54,79,${redPulse * 0.7})` }} />
       <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px) scale(${s})`, transformOrigin: "540px 820px" }}>
         <Chart t={t} />
         <IntroHUD t={t} />
@@ -666,13 +675,19 @@ export const V2: React.FC = () => {
         <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={50.95} accent={YELLOW} y={TY} size={96} weight={800} />
         <Title t={t} />
       </AbsoluteFill>
-      <Flash t={t} at={1.81} color={RED} peak={0.12} dur={0.4} />
-      <Flash t={t} at={4.23} color="#ffffff" peak={0.14} dur={0.5} />
+      <Flash t={t} at={1.81} color={RED} peak={0.08} dur={0.5} />
+      <Sparkles t={t} at={1.95} x={700} y={TY + 50} color={RED} n={8} spread={150} seed={1} />
+      <Sparkles t={t} at={23.2} x={760} y={TY + 50} color={GREEN} n={9} spread={170} seed={2} />
+      <Sparkles t={t} at={38.6} x={700} y={TY + 50} color={ORANGE} n={9} spread={170} seed={3} />
+      <Sparkles t={t} at={44.95} x={470} y={TY - 40} color={YELLOW} n={14} spread={260} seed={4} />
+      <Sparkles t={t} at={49.4} x={700} y={TY + 50} color={YELLOW} n={9} spread={160} seed={5} />
+      <Sparkles t={t} at={51.9} x={760} y={1340} color={YELLOW} n={12} spread={220} seed={6} />
+      <Flash t={t} at={4.23} color="#FFFFFF" peak={0.5} dur={0.6} />
       <Flash t={t} at={35.62} color={ORANGE} peak={0.18} dur={0.6} />
-      <Flash t={t} at={42.86} color={YELLOW} peak={0.35} dur={0.7} />
+      <Flash t={t} at={42.86} color="#FFE7A3" peak={0.5} dur={0.8} />
       <Flash t={t} at={48.9} color={YELLOW} peak={0.12} dur={0.5} />
-      <FilmLook grain={0.08} vignette={0.72} />
-      <AbsoluteFill style={{ background: "#000", opacity: (1 - prog(t, 0, 0.35, easeOut)) + prog(t, 53.5, 54) }} />
+      <FilmLook />
+      <AbsoluteFill style={{ background: PAPER, opacity: (1 - prog(t, 0, 0.5, easeOut)) + prog(t, 53.4, 54) }} />
     </AbsoluteFill>
   );
 };

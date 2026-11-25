@@ -1,10 +1,16 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
 import { MONO, SANS } from "./fonts";
-import { clamp, easeInExpo, easeOutExpo, prog, rand } from "./lib";
+import { clamp, easeInExpo, easeOutBack, easeOutExpo, mixColor, prog, rand } from "./lib";
+
+/* Warm-white "paper" theme shared by both films */
+export const PAPER = "#FBF7F0";
+export const PAPER_DEEP = "#F1E9DC";
+export const INK = "#1C1E24";
+export const INK_SOFT = "#6B6F7A";
 
 /* ------------------------------------------------------------------ */
-/* Kinetic headline: word-by-word blur/rise reveal with accent glow    */
+/* Kinetic headline: word-by-word blur/rise reveal with accent sweep   */
 /* text syntax: "line one|line *accent*"                               */
 /* ------------------------------------------------------------------ */
 export const Kinetic: React.FC<{
@@ -20,9 +26,10 @@ export const Kinetic: React.FC<{
   accentGlow?: boolean;
   color?: string;
   exitDir?: 1 | -1;
-}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = "#F4F6FB", exitDir = -1 }) => {
+}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1 }) => {
   if (t < inAt - 0.05 || t > outAt + 0.6) return null;
   const lines = text.split("|");
+  const hi = mixColor(accent, "#ffffff", 0.55);
   let idx = 0;
   return (
     <div
@@ -48,14 +55,14 @@ export const Kinetic: React.FC<{
             const word = raw.replace(/\*/g, "");
             const i = idx++;
             const start = inAt + i * stagger + (isAccent ? 0.06 : 0);
-            const p = prog(t, start, start + 0.75, easeOutExpo);
-            const e = prog(t, outAt + i * 0.025, outAt + i * 0.025 + 0.42, easeInExpo);
+            const p = prog(t, start, start + 0.8, easeOutExpo);
+            const e = prog(t, outAt + i * 0.025, outAt + i * 0.025 + 0.45, easeInExpo);
             const op = p * (1 - e);
-            const ty = (1 - p) * 0.55 * size + e * exitDir * 0.45 * size;
+            const ty = (1 - p) * 0.5 * size + e * exitDir * 0.4 * size;
             const blur = (1 - p) * 14 + e * 12;
-            const sc = isAccent ? 1 + (1 - p) * 0.12 : 1;
-            // accent: a light sweep passes through the word once it lands
-            const sweep = prog(t, start + 0.25, start + 1.05, easeOutExpo);
+            const sc = isAccent ? 1 + (1 - p) * 0.14 : 1;
+            const rot = (1 - p) * (i % 2 ? 2.5 : -2.5);
+            const sweep = prog(t, start + 0.3, start + 1.2, easeOutExpo);
             return (
               <span
                 key={wi}
@@ -63,12 +70,12 @@ export const Kinetic: React.FC<{
                   display: "inline-block",
                   marginRight: "0.24em",
                   opacity: op,
-                  transform: `translateY(${ty}px) scale(${sc})`,
+                  transform: `translateY(${ty}px) scale(${sc}) rotate(${rot}deg)`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                   color: isAccent ? accent : undefined,
-                  textShadow: isAccent && accentGlow ? `0 0 ${28 * op}px ${accent}88` : undefined,
+                  textShadow: isAccent && accentGlow ? `0 6px ${26 * op}px ${accent}40` : `0 10px 30px rgba(80,55,25,${0.1 * op})`,
                   backgroundImage: isAccent
-                    ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, #ffffff ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
+                    ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, ${hi} ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
                     : undefined,
                   WebkitBackgroundClip: isAccent ? "text" : undefined,
                   WebkitTextFillColor: isAccent ? "transparent" : undefined,
@@ -102,8 +109,8 @@ export const Decode: React.FC<{ t: number; text: string; at: number; dur?: numbe
   return <span style={{ fontFamily: MONO, ...style }}>{shown}</span>;
 };
 
-/* Film finishing: grain, vignette, subtle chromatic edge & light leak */
-export const FilmLook: React.FC<{ grain?: number; vignette?: number }> = ({ grain = 0.09, vignette = 0.75 }) => {
+/* Paper finishing: grain texture + warm vignette */
+export const FilmLook: React.FC<{ grain?: number; vignette?: number }> = ({ grain = 0.07, vignette = 0.16 }) => {
   const frame = useCurrentFrame();
   const gx = Math.floor(rand(frame) * 512);
   const gy = Math.floor(rand(frame + 99) * 512);
@@ -111,7 +118,7 @@ export const FilmLook: React.FC<{ grain?: number; vignette?: number }> = ({ grai
     <AbsoluteFill style={{ pointerEvents: "none" }}>
       <AbsoluteFill
         style={{
-          background: `radial-gradient(ellipse 75% 60% at 50% 45%, transparent 40%, rgba(0,0,0,${vignette}) 100%)`,
+          background: `radial-gradient(ellipse 80% 62% at 50% 45%, transparent 45%, rgba(150,110,70,${vignette}) 100%)`,
         }}
       />
       <AbsoluteFill
@@ -120,7 +127,7 @@ export const FilmLook: React.FC<{ grain?: number; vignette?: number }> = ({ grai
           backgroundPosition: `${gx}px ${gy}px`,
           backgroundSize: "512px 512px",
           opacity: grain,
-          mixBlendMode: "overlay",
+          mixBlendMode: "multiply",
         }}
       />
     </AbsoluteFill>
@@ -143,11 +150,107 @@ export const Orb: React.FC<{ x: number; y: number; r: number; color: string; opa
   />
 );
 
-/* Flash overlay for impacts */
+/* Soft colour wash for transitions (light theme: tint, not a white flash) */
 export const Flash: React.FC<{ t: number; at: number; color?: string; peak?: number; dur?: number }> = ({ t, at, color = "#ffffff", peak = 0.35, dur = 0.5 }) => {
   if (t < at || t > at + dur) return null;
   const p = (t - at) / dur;
-  return <AbsoluteFill style={{ background: color, opacity: peak * (1 - p) ** 2, mixBlendMode: "screen" }} />;
+  return <AbsoluteFill style={{ background: `radial-gradient(circle at 50% 42%, ${color} 0%, transparent 75%)`, opacity: peak * (1 - p) ** 2 }} />;
+};
+
+/* ------------------------------------------------------------------ */
+/* "Alive" ambience: drifting dust/bokeh + slow warm light leaks       */
+/* ------------------------------------------------------------------ */
+const DUST = new Array(46).fill(0).map((_, i) => ({
+  x: rand(i * 4.1) * 1080,
+  y: rand(i * 7.3) * 1920,
+  z: 0.3 + rand(i * 2.9) * 0.7,
+  sp: 8 + rand(i * 1.7) * 22,
+  ph: rand(i * 9.1) * 6.28,
+  big: rand(i * 3.3) > 0.82,
+}));
+export const Ambience: React.FC<{ t: number; tint: string; tint2?: string; strength?: number }> = ({ t, tint, tint2 = "#FFC9A0", strength = 1 }) => (
+  <AbsoluteFill style={{ pointerEvents: "none" }}>
+    {/* light leaks */}
+    <div
+      style={{
+        position: "absolute",
+        left: -300 + Math.sin(t * 0.13) * 220,
+        top: -200 + Math.cos(t * 0.11) * 160,
+        width: 1200,
+        height: 1000,
+        borderRadius: "50%",
+        background: `radial-gradient(circle, ${tint2}55 0%, transparent 65%)`,
+        opacity: 0.55 * strength,
+        filter: "blur(30px)",
+      }}
+    />
+    <div
+      style={{
+        position: "absolute",
+        right: -380 + Math.cos(t * 0.09) * 240,
+        bottom: -240 + Math.sin(t * 0.12) * 200,
+        width: 1300,
+        height: 1100,
+        borderRadius: "50%",
+        background: `radial-gradient(circle, ${tint}33 0%, transparent 65%)`,
+        opacity: 0.6 * strength,
+        filter: "blur(30px)",
+      }}
+    />
+    {/* dust + bokeh */}
+    {DUST.map((d, i) => {
+      const y = (((d.y - t * d.sp * d.z) % 2000) + 2000) % 2000 - 40;
+      const x = d.x + Math.sin(t * 0.5 + d.ph) * 26 * d.z;
+      const r = d.big ? 10 + d.z * 18 : 1.6 + d.z * 3;
+      const tw = 0.55 + 0.45 * Math.sin(t * 1.3 + d.ph);
+      return (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: x - r,
+            top: y - r,
+            width: r * 2,
+            height: r * 2,
+            borderRadius: "50%",
+            background: d.big ? `radial-gradient(circle, ${i % 2 ? tint : tint2}44 0%, transparent 70%)` : i % 3 ? "#B89B78" : tint,
+            opacity: (d.big ? 0.7 : 0.28) * tw * d.z * strength,
+            filter: d.big ? "blur(2px)" : undefined,
+          }}
+        />
+      );
+    })}
+  </AbsoluteFill>
+);
+
+/* Sparkle burst: 4-point stars popping around a point */
+export const Sparkles: React.FC<{ t: number; at: number; x: number; y: number; color: string; n?: number; spread?: number; seed?: number }> = ({ t, at, x, y, color, n = 9, spread = 170, seed = 1 }) => {
+  if (t < at || t > at + 1.4) return null;
+  return (
+    <>
+      {new Array(n).fill(0).map((_, i) => {
+        const d = 0.05 * i;
+        const p = prog(t, at + d, at + d + 1.1, easeOutExpo);
+        const pop = prog(t, at + d, at + d + 0.35, easeOutBack);
+        const fade = prog(t, at + d + 0.5, at + d + 1.2);
+        const a = rand(seed * 13 + i * 3.7) * Math.PI * 2;
+        const r = spread * (0.45 + rand(seed * 7 + i) * 0.55) * p;
+        const s = (10 + rand(seed + i * 5.1) * 16) * pop * (1 - fade);
+        if (s <= 0.2) return null;
+        return (
+          <svg
+            key={i}
+            width={s * 2}
+            height={s * 2}
+            viewBox="-10 -10 20 20"
+            style={{ position: "absolute", left: x + Math.cos(a) * r - s, top: y + Math.sin(a) * r - s, transform: `rotate(${p * 90}deg)`, overflow: "visible" }}
+          >
+            <path d="M0,-10 Q1.2,-1.2 10,0 Q1.2,1.2 0,10 Q-1.2,1.2 -10,0 Q-1.2,-1.2 0,-10 Z" fill={i % 3 === 0 ? "#F2B544" : color} />
+          </svg>
+        );
+      })}
+    </>
+  );
 };
 
 export { Img };

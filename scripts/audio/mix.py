@@ -208,7 +208,23 @@ def swell(d=2.2):
     return norm(lp(pad, 2000) * e, 0.5)
 
 
+def bloom(d=2.4):
+    """soft low swell: warm sub + filtered air, no transient (calm 'impact')"""
+    tt = t_(d)
+    att = 1 - np.exp(-tt * 9)
+    sub = np.sin(2 * np.pi * 55 * tt) * np.exp(-tt * 1.6) * att
+    air = lp(rng.standard_normal(len(tt)), 900) * np.exp(-tt * 2.2) * att * 0.35
+    pad = sum(np.sin(2 * np.pi * f * tt) for f in (261.6, 392.0, 523.3)) / 3 * np.exp(-tt * 1.2) * att * 0.25
+    return norm(sub + air + pad, 0.8)
+
+
+def whoosh_air(d=1.2):
+    return norm(lp(whoosh(d), 1400) * 0.8, 0.55)
+
+
 BANK = {
+    "bloom": bloom,
+    "whoosh_air": whoosh_air,
     "whoosh": lambda: whoosh(0.7),
     "whoosh_long": lambda: whoosh(1.1),
     "whoosh_down": lambda: whoosh(0.7, False),
@@ -253,13 +269,13 @@ def main(tl_path, out_path):
     mus = np.zeros((N, 2))
     m = tl["music"]
     src = load_music(m["file"])
-    xf = int(0.12 * SR)  # crossfade at splices
+    xf = int(m.get("xfade", 0.12) * SR)  # crossfade at splices
     for vs, ms, me in m["segments"]:
         a, b = int(ms * SR), int(me * SR)
         seg = src[a : b + xf].copy()
         st = int(vs * SR)
         # fade edges for crossfades
-        ramp = np.linspace(0, 1, xf)[:, None]
+        ramp = np.sin(np.linspace(0, np.pi / 2, xf))[:, None]
         if vs > 0:
             seg[:xf] *= ramp
         seg[-xf:] *= ramp[::-1]
