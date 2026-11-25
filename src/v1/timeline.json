@@ -1,27 +1,22 @@
 {
  "duration": 50.7,
  "music": {
-  "file": "public/audio/calm-v1.mp3",
+  "file": "public/audio/night-sky.mp3",
   "segments": [
    [
     0,
-    16.0,
-    52.23
+    0.0,
+    44.0
    ],
    [
-    36.23,
-    57.9,
-    67.0
-   ],
-   [
-    45.89,
-    166.9,
-    173.5
+    43.6,
+    121.6,
+    131.0
    ]
   ],
-  "fadeIn": 1.2,
+  "fadeIn": 0.3,
   "fadeOut": 1.0,
-  "gain_db": 0,
+  "gain_db": -3,
   "xfade": 0.8
  },
  "sfx": [
@@ -207,6 +202,20 @@
    "count",
    -29,
    0
+  ],
+  [
+   36.9,
+   "@stardust-swish",
+   -22,
+   0,
+   2.2
+  ],
+  [
+   38.35,
+   "@sparkle-touch",
+   -23,
+   0.2,
+   1.6
   ],
   [
    38.4,

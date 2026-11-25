@@ -622,7 +622,7 @@ const Starfield: React.FC<{ t: number }> = ({ t }) => {
     const y1 = CY + Math.sin(s.a) * r1 * 1.5;
     const x0 = CX + Math.cos(s.a) * r0;
     const y0 = CY + Math.sin(s.a) * r0 * 1.5;
-    const tw = 0.6 + 0.4 * Math.sin(t * 3 + i);
+    const tw = (0.6 + 0.4 * Math.sin(t * 3 + i)) * (1 - 0.6 * prog(t, 37.6, 38.3) * (1 - prog(t, 39.9, 40.3)));
     const size = 1.1 + s.z * 2.4;
     const col = s.blue ? BLUE : "#2A2F45";
     lines.push(
@@ -638,13 +638,18 @@ const Starfield: React.FC<{ t: number }> = ({ t }) => {
 
 const Counter: React.FC<{ t: number }> = ({ t }) => {
   if (t < DROP || t > 40.8) return null;
-  const p = prog(t, DROP + 0.1, 38.35, (x) => 1 - Math.pow(1 - x, 3.2));
+  // critically damped count (no overshoot), lands exactly on 8,000 before the particles take over
+  const cd = (tt: number) => {
+    const x = Math.max(0, tt - (DROP + 0.1)) * 4.2;
+    return 1 - (1 + x) * Math.exp(-x);
+  };
+  const p = t > 37.95 ? 1 : cd(t);
   const val = Math.round(p * 8000);
-  const vel = (prog(t + 0.033, DROP + 0.1, 38.35, (x) => 1 - Math.pow(1 - x, 3.2)) - p) * 8000;
+  const vel = (cd(t + 0.033) - cd(t)) * 8000;
+  const handOver = prog(t, 37.75, 38.3, easeInOut);
   const blurY = Math.min(10, vel / 30);
   const inP = prog(t, DROP, DROP + 0.5, easeOutExpo);
   const out = prog(t, 40.0, 40.45, easeInExpo);
-  const plus = prog(t, 38.4, 38.9, easeOutBack);
   const sub1 = prog(t, 37.0, 37.7, easeOutExpo);
   const sub2 = prog(t, 37.25, 37.95, easeOutExpo);
   return (
@@ -663,23 +668,11 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
           letterSpacing: "-0.055em",
           color: INK,
           fontVariantNumeric: "tabular-nums",
-          opacity: inP,
+          opacity: inP * (1 - handOver),
           textShadow: "0 24px 60px rgba(91,140,255,0.22)",
         }}
       >
         <span style={{ filter: blurY > 0.3 ? `blur(${blurY * 0.3}px)` : undefined, display: "inline-block" }}>{val.toLocaleString("en-US")}</span>
-        <span
-          style={{
-            display: "inline-block",
-            color: BLUE,
-            marginLeft: 6,
-            transform: `scale(${plus}) rotate(${(1 - plus) * -90}deg)`,
-            opacity: clamp(plus * 2),
-            textShadow: `0 0 50px ${BLUE}`,
-          }}
-        >
-          +
-        </span>
       </div>
       <div style={{ position: "absolute", left: 0, right: 0, top: CY + 120, textAlign: "center", fontFamily: SANS }}>
         <div style={{ fontSize: 50, fontWeight: 600, color: INK, letterSpacing: "-0.02em", opacity: sub1, transform: `translateY(${(1 - sub1) * 24}px)`, filter: `blur(${(1 - sub1) * 8}px)` }}>
@@ -690,6 +683,95 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
         </div>
       </div>
     </AbsoluteFill>
+  );
+};
+
+/* ================================================================== */
+/* Particle formation: the burst swirls into "8,000+" (motion-particles) */
+/* ================================================================== */
+type Pt = { x: number; y: number; plus: boolean };
+const FORM_TEXT = "8,000";
+const Formation: React.FC<{ t: number }> = ({ t }) => {
+  const [pts, setPts] = useState<Pt[]>([]);
+  const [handle] = useState(() => delayRender("sample formation"));
+  useLayoutEffect(() => {
+    let done = false;
+    document.fonts.load("800 220px Inter").then(() => {
+      if (done) return;
+      const c = document.createElement("canvas");
+      c.width = 1080;
+      c.height = 420;
+      const ctx = c.getContext("2d")!;
+      ctx.font = "800 220px Inter";
+      (ctx as unknown as { letterSpacing: string }).letterSpacing = "-12px";
+      ctx.textBaseline = "middle";
+      const wNum = ctx.measureText(FORM_TEXT).width;
+      const wPlus = ctx.measureText("+").width;
+      const gap = 6;
+      const left = CX - (wNum + gap + wPlus) / 2;
+      ctx.fillStyle = "#000";
+      ctx.fillText(FORM_TEXT, left, 210);
+      ctx.fillText("+", left + wNum + gap, 210);
+      const data = ctx.getImageData(0, 0, c.width, c.height).data;
+      const out: Pt[] = [];
+      const SP = 4.3;
+      let k = 0;
+      for (let y = 0; y < c.height; y += SP) {
+        for (let x = 0; x < c.width; x += SP) {
+          const jx = x + (rand(k * 1.3) - 0.5) * 1.6;
+          const jy = y + (rand(k * 2.1) - 0.5) * 1.6;
+          k++;
+          const a = data[(Math.round(jy) * c.width + Math.round(jx)) * 4 + 3];
+          if (a > 140) out.push({ x: jx, y: CY - 40 + (jy - 210), plus: jx > left + wNum + gap * 0.5 });
+        }
+      }
+      setPts(out.slice(0, 2800));
+      continueRender(handle);
+    });
+    return () => {
+      done = true;
+    };
+  }, [handle]);
+  if (t < DROP || t > 41.1 || !pts.length) return null;
+  const R = 900;
+  const pos = (tt: number, p: Pt, i: number) => {
+    const a = rand(i * 3.17 + 0.5) * Math.PI * 2;
+    const r = Math.pow(rand(i * 5.71 + 0.2), 0.7);
+    const burst = easeOutExpo(clamp((tt - DROP) / 1.1)) * (1 + Math.max(0, tt - DROP) * 0.05);
+    const bx = CX + Math.cos(a) * r * R * burst;
+    const by = CY + Math.sin(a) * r * R * 1.5 * burst;
+    const d = rand(i * 7.7) * 0.45;
+    const g = prog(tt, 36.95 + d, 37.95 + d * 0.9, easeInOut);
+    // swirl: arc in from the side instead of flying straight
+    const dx = p.x - bx;
+    const dy = p.y - by;
+    const len = Math.hypot(dx, dy) || 1;
+    const sw = Math.sin(Math.PI * g) * 110 * (i % 2 ? 1 : -1);
+    let x = lerp(bx, p.x, g) + (-dy / len) * sw;
+    let y = lerp(by, p.y, g) + (dx / len) * sw;
+    const hold = g >= 1 ? 0.35 : 0;
+    x += hold * Math.sin(tt * 2.1 + i);
+    y += hold * Math.cos(tt * 1.7 + i * 0.7);
+    const k = easeInExpo(clamp((tt - 40.25) / 0.75));
+    return [lerp(x, CX, k), lerp(y, CY, k)];
+  };
+  const gx = lerp(CX - 520, CX + 520, prog(t, 38.55, 39.55, easeInOut));
+  const glintOn = t > 38.5 && t < 39.7;
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0 }}>
+      {pts.map((p, i) => {
+        const [x1, y1] = pos(t, p, i);
+        const [x0, y0] = pos(t - 1 / FPS, p, i);
+        const near = glintOn ? Math.max(0, 1 - Math.abs(x1 - gx) / 80) : 0;
+        const r = 2.2 + near * 1.6;
+        const col = p.plus ? BLUE : near > 0.3 ? "#3D63D9" : "#2A2F45";
+        // streak alpha falls with its length, so fast particles read as light, not ink scribbles
+        const len = Math.hypot(x1 - x0, y1 - y0);
+        const op = 0.9 * Math.min(1, Math.sqrt(5 / Math.max(5, len)));
+        const w = len > 6 ? r * 1.1 : r * 2;
+        return <line key={i} x1={x0} y1={y0} x2={x1 + 0.01} y2={y1} stroke={col} strokeWidth={w} strokeLinecap="round" opacity={op} />;
+      })}
+    </svg>
   );
 };
 
@@ -728,8 +810,16 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
   const dx = lerp(CX, end.x, fly);
   const dy = lerp(CY, end.y, fly) + arcY;
   const beat = 1 + 0.08 * Math.exp(-((((t - 41.06) % 0.6037) + 0.6037) % 0.6037) * 6);
-  const tp = (at: number) => prog(t, at, at + 0.9, easeOutExpo);
-  const sweep = prog(t, TITLE_AT + 0.7, TITLE_AT + 1.7, easeInOut);
+  const sweep = prog(t, TITLE_AT + 1.2, TITLE_AT + 2.2, easeInOut);
+  const charReveal = (txt: string, at: number) =>
+    txt.split("").map((ch, i) => {
+      const cp = prog(t, at + i * 0.035, at + i * 0.035 + 0.8, easeOutExpo);
+      return (
+        <span key={i} style={{ display: "inline-block", whiteSpace: "pre", transform: `translateY(${(1 - cp) * TS * 1.15}px)`, opacity: clamp(cp * 1.8), filter: cp < 0.95 ? `blur(${(1 - cp) * 4}px)` : undefined }}>
+          {ch}
+        </span>
+      );
+    });
   const tags = prog(t, 48.6, 49.3, easeOutExpo);
   const fadeEnd = prog(t, 50.2, 50.7);
   return (
@@ -750,14 +840,14 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           color: INK,
         }}
       >
-        <div style={{ opacity: tp(TITLE_AT), transform: `translateY(${(1 - tp(TITLE_AT)) * 60}px)`, filter: `blur(${(1 - tp(TITLE_AT)) * 16}px)` }}>Beyond the</div>
+        <div style={{ overflow: "hidden", padding: "0.05em 0.2em 0.15em", margin: "-0.05em 0 -0.15em" }}>{charReveal("Beyond the", TITLE_AT)}</div>
         <div style={{ position: "relative", display: "inline-block" }}>
+          {t < TITLE_AT + 1.2 ? (
+            <span style={{ display: "inline-block", overflow: "hidden", padding: "0.05em 0 0.15em", margin: "-0.05em 0 -0.15em", verticalAlign: "bottom" }}>{charReveal("Grades", TITLE_AT + 0.3)}</span>
+          ) : (
           <span
             style={{
               display: "inline-block",
-              opacity: tp(TITLE_AT + 0.12),
-              transform: `translateY(${(1 - tp(TITLE_AT + 0.12)) * 60}px)`,
-              filter: `blur(${(1 - tp(TITLE_AT + 0.12)) * 16}px)`,
               backgroundImage: `linear-gradient(100deg, ${INK} ${sweep * 150 - 50}%, ${BLUE} ${sweep * 150 - 30}%, ${INK} ${sweep * 150 - 10}%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -765,6 +855,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           >
             Grades
           </span>
+          )}
           <span ref={ref} style={{ display: "inline-block", width: SLOT, height: SLOT, marginLeft: SLOT_GAP, verticalAlign: "baseline" }} />
         </div>
         <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "0em", color: "#8C877D", marginTop: 60, lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
@@ -797,6 +888,7 @@ export const V1: React.FC = () => {
         <Pathway t={t} />
         <Starfield t={t} />
         <Counter t={t} />
+        <Formation t={t} />
         <Ending t={t} />
         <Sparkles t={t} at={38.4} x={880} y={CY - 50} color={BLUE} n={10} spread={170} seed={4} />
       </Camera>
@@ -812,7 +904,7 @@ export const V1: React.FC = () => {
         <Kinetic t={t} text="With Pearson Edexcel,|every step|leads *somewhere.*" inAt={32.4} outAt={35.15} accent={BLUE} y={TY + 70} size={72} />
         <Kinetic t={t} text="This year,|I'm *one of them.*" inAt={41.06} outAt={43.2} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
-        <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.45} accent={BLUE} y={1010} />
+        <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
       </AbsoluteFill>
       <Flash t={t} at={DROP} color="#BCD0FF" peak={0.5} dur={0.8} />
       <Flash t={t} at={TITLE_AT + 0.75} color="#9DB6FF" peak={0.18} dur={0.6} />

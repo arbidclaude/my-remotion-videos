@@ -1,32 +1,32 @@
 {
  "duration": 54.0,
  "music": {
-  "file": "public/audio/calm-v2.mp3",
+  "file": "public/audio/finding-myself.mp3",
   "segments": [
    [
     0,
-    1.0,
-    15.0
+    28.0,
+    42.0
    ],
    [
     14.0,
-    27.9,
-    35.03
+    13.6,
+    21.13
    ],
    [
     21.13,
-    35.03,
-    62.9
+    42.0,
+    69.9
    ],
    [
     49.0,
-    72.0,
-    79.4
+    121.0,
+    128.0
    ]
   ],
-  "fadeIn": 0.6,
+  "fadeIn": 0.4,
   "fadeOut": 1.4,
-  "gain_db": 0,
+  "gain_db": 6,
   "xfade": 0.8
  },
  "sfx": [

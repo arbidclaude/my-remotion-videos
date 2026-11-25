@@ -202,6 +202,11 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
         </defs>
         <g mask="url(#edge)">
           {grid}
+          {[0, 30, 60].map((v) => (
+            <text key={v} x={104} y={P.sy(WY(v)) - 10} fontFamily="JetBrains Mono" fontSize={22} fill={INK} opacity={0.45}>
+              {v}
+            </text>
+          ))}
           {/* 60/60 target line */}
           <line x1={-20} x2={1100} y1={top} y2={top} stroke={YELLOW} strokeOpacity={0.35 + P.r * 0.3} strokeDasharray="10 10" strokeWidth={2} />
           <g mask="url(#startFade)">
@@ -249,8 +254,8 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
           return (
             <g key={i} transform={`translate(${m.x},${m.y - 46})`} opacity={clamp(p * 2) * (1 - P.r * 0.6)}>
               <line x1={0} y1={18} x2={0} y2={46} stroke={GREEN} strokeOpacity={0.5} strokeWidth={2} />
-              <circle r={18 * p} fill={GREEN} />
-              <text y={7} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={18} fontWeight={500} fill="#FFFFFF">
+              <circle r={22 * p} fill={GREEN} />
+              <text y={7} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={22} fontWeight={500} fill="#FFFFFF">
                 {i + 1}
               </text>
             </g>
@@ -288,7 +293,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
                     </g>
                   );
                 })}
-                <text x={m.x} y={m.y + 104} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={20} fill={ORANGE} opacity={lbl(famAt + 0.3)} letterSpacing={2}>
+                <text x={m.x} y={m.y + 104} textAnchor="middle" fontFamily="JetBrains Mono" fontSize={24} fill={ORANGE} opacity={lbl(famAt + 0.3)} letterSpacing={2}>
                   FAMILY
                 </text>
               </g>
@@ -315,7 +320,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
                 textAnchor={side < 0 ? "start" : "middle"}
                 fontFamily="JetBrains Mono"
                 fontWeight={500}
-                fontSize={26}
+                fontSize={32}
                 letterSpacing={3}
                 fill={col}
                 opacity={p}
@@ -325,7 +330,7 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
             );
           })}
         {P.r > 0.5 && (
-          <text x={hxS - 30} y={hyS + 50} textAnchor="end" fontFamily="JetBrains Mono" fontWeight={500} fontSize={34} fill={YELLOW} opacity={lbl(46.45)}>
+          <text x={hxS - 30} y={hyS + 50} textAnchor="end" fontFamily="JetBrains Mono" fontWeight={500} fontSize={42} fill={YELLOW} opacity={lbl(46.45)}>
             59/60
           </text>
         )}
@@ -410,12 +415,12 @@ const ChapterLabel: React.FC<{ t: number }> = ({ t }) => {
   const line = prog(t, at, at + 0.6, easeOutExpo);
   return (
     <div style={{ position: "absolute", left: 80, top: 230, opacity: 1 - out }}>
-      <div style={{ fontSize: 30, letterSpacing: 4, color: "#6B6F7A", display: "flex", gap: 16, alignItems: "center" }}>
+      <div style={{ fontSize: 36, letterSpacing: 4, color: "#6B6F7A", display: "flex", gap: 16, alignItems: "center" }}>
         <Decode t={t} text={num} at={at} dur={0.3} style={{ color: CH_COL[idx], fontWeight: 500 }} />
         <span style={{ width: 36 * line, height: 2, background: CH_COL[idx], display: "inline-block", opacity: 0.8 }} />
         <Decode t={t} text={name} at={at + 0.08} dur={0.55} />
       </div>
-      <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: "#9A968E" }}>
+      <div style={{ marginTop: 22, fontFamily: MONO, fontSize: 26, letterSpacing: 3, color: "#8A857C" }}>
         SCORE <span style={{ color: YELLOW, marginLeft: 10 }}>60 / 60</span>
       </div>
     </div>
@@ -428,7 +433,7 @@ const Terminal: React.FC<{ t: number }> = ({ t }) => {
   const lines = [11.5, 12.1, 12.7, 13.2];
   const txt = "> JUST ONE MORE MATCH";
   return (
-    <div style={{ position: "absolute", left: 80, top: 330, fontFamily: MONO, fontSize: 26, letterSpacing: 2, color: RED, opacity: 1 - out, filter: out ? `blur(${out * 8}px)` : undefined }}>
+    <div style={{ position: "absolute", left: 80, top: 330, fontFamily: MONO, fontSize: 30, letterSpacing: 2, color: RED, opacity: 1 - out, filter: out ? `blur(${out * 8}px)` : undefined }}>
       {lines.map((at, i) => {
         if (t < at) return null;
         const n = Math.floor(clamp((t - at) / 0.42) * txt.length);
@@ -592,8 +597,9 @@ const PressStart: React.FC<{ t: number }> = ({ t }) => {
 /* Result counter */
 const Result: React.FC<{ t: number }> = ({ t }) => {
   if (t < 43.2 || t > 47.7) return null;
-  const p = prog(t, 43.3, 44.9, (x) => 1 - Math.pow(1 - x, 2.6));
-  const val = Math.round(lerp(44, 59, p));
+  // critically damped count from 0 (motion-charts: no overshoot, no invented start value)
+  const x = Math.max(0, t - 43.3) * 4.5;
+  const val = Math.min(59, Math.round(59 * (1 - (1 + x) * Math.exp(-x))));
   const done = val >= 59;
   const land = prog(t, 44.9, 45.4, easeOutBack);
   const inP = prog(t, 43.2, 43.7, easeOutExpo);
@@ -602,7 +608,7 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined }}>
       <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1 }}>
-        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? `0 24px 60px ${YELLOW}55` : undefined }}>{val}</span>
+        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? `0 24px 60px ${YELLOW}55` : undefined }}>{val}</span>
         <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
       </div>
       <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#5E5B55", marginTop: 20, opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
@@ -617,7 +623,7 @@ const Title: React.FC<{ t: number }> = ({ t }) => {
   const tags = prog(t, 52.1, 52.8, easeOutExpo);
   return (
     <>
-      <Kinetic t={t} text="Beyond the|*Grades.*" inAt={51.3} outAt={99} accent={YELLOW} y={1280} size={156} weight={800} stagger={0.1} />
+      <Kinetic t={t} text="Beyond the|*Grades.*" inAt={51.3} outAt={99} accent={YELLOW} y={1280} size={156} weight={800} chars />
       <div style={{ position: "absolute", left: 0, right: 0, top: 1480, textAlign: "center", fontFamily: SANS, fontWeight: 500, fontSize: 34, color: "#8C877D", lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
         #OPLA2026&nbsp;&nbsp;#BeyondTheGrades
         <br />

@@ -26,7 +26,9 @@ export const Kinetic: React.FC<{
   accentGlow?: boolean;
   color?: string;
   exitDir?: 1 | -1;
-}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1 }) => {
+  /** per-character mask reveal (for short titles) */
+  chars?: boolean;
+}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1, chars = false }) => {
   if (t < inAt - 0.05 || t > outAt + 0.6) return null;
   const lines = text.split("|");
   const hi = mixColor(accent, "#ffffff", 0.55);
@@ -64,6 +66,32 @@ export const Kinetic: React.FC<{
             const blur = (1 - p) * 5 + e * 4;
             const sweep = prog(t, start + 0.35, start + 1.3, easeOutExpo);
             void i;
+            if (chars) {
+              const lineOffset = arr.slice(0, wi).join(" ").replace(/\*/g, "").length + (wi ? 1 : 0);
+              return (
+                <span key={wi} style={{ display: "inline-block", marginRight: wi === arr.length - 1 ? 0 : "0.24em", color: isAccent ? accent : undefined }}>
+                  {word.split("").map((ch, ci) => {
+                    const cs = inAt + li * 0.14 + (lineOffset + ci) * 0.032;
+                    const cp = prog(t, cs, cs + 0.75, easeOutExpo);
+                    const cty = (1 - cp) * 1.15 * size + e * exitDir * 1.1 * size;
+                    return (
+                      <span
+                        key={ci}
+                        style={{
+                          display: "inline-block",
+                          opacity: clamp(cp * 1.8) * (1 - e),
+                          transform: `translateY(${cty}px)`,
+                          filter: cp < 0.95 ? `blur(${(1 - cp) * 4}px)` : undefined,
+                          textShadow: isAccent && accentGlow ? `0 8px 30px ${accent}40` : `0 10px 30px rgba(80,55,25,0.1)`,
+                        }}
+                      >
+                        {ch}
+                      </span>
+                    );
+                  })}
+                </span>
+              );
+            }
             return (
               <span
                 key={wi}
