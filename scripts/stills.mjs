@@ -10,6 +10,6 @@ const browserExecutable = "/opt/pw-browsers/chromium_headless_shell-1243/chrome-
 const composition = await selectComposition({ serveUrl, id, browserExecutable });
 for (const s of times) {
   const frame = Math.min(composition.durationInFrames - 1, Math.round(parseFloat(s) * 30));
-  await renderStill({ serveUrl, composition, frame, output: path.join(outDir, `${id}-${s.padStart(5, "0")}.jpg`), imageFormat: "jpeg", scale: 0.4, browserExecutable });
+  await renderStill({ serveUrl, composition, frame, output: path.join(outDir, `${id}-${Number(s).toFixed(2).padStart(6, "0")}.jpg`), imageFormat: "jpeg", scale: 0.4, browserExecutable });
 }
 console.log("done");

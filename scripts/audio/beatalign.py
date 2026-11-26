@@ -78,6 +78,8 @@ for (vs, ms, me), ve in zip(segs, ends):
     best = (0.0, 9e9)
     if hs:
         for d in np.arange(-0.6, 0.601, 0.005):
+            if ms + d < 0 or me + d > len(y) / sr:
+                continue  # never start before / run past the track
             e = np.mean([abs(nearest_err(ms + d + (h - vs))) for h in hs])
             if e < best[1]:
                 best = (float(d), e)

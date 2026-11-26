@@ -5,8 +5,8 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Flash, FilmLook, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
-import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
+import { Ambience, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
+import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
 const VIOLET = "#9B7BFF";
@@ -23,12 +23,12 @@ export const V1_DURATION = 50.7;
 const camScale = smoothKeys([
   [0, 1.16], [3.9, 1.03], [4.3, 1.0], [9.5, 1.05], [10.3, 0.97], [14.3, 1.02], [15.05, 1.75],
   [15.8, 1.0], [20.9, 1.06], [21.7, 0.97], [26.4, 1.03], [27.0, 1.7], [27.6, 1.0],
-  [33.8, 1.0], [36.15, 1.16], [36.6, 0.95], [40.1, 1.0], [40.95, 1.35], [41.6, 1.0],
+  [33.8, 1.0], [36.15, 1.16], [36.6, 0.95], [39.6, 1.0], [41.6, 1.0],
   [47.4, 1.04], [48.1, 0.97], [50.7, 1.06],
 ]);
 const camRot = smoothKeys([
   [0, -2.2], [3.9, 0], [9.5, 0], [10.3, 0.8], [14.3, 0], [15.05, -4], [15.8, 0], [26.4, 0], [27.0, 3.5],
-  [27.6, 0], [40.1, 0], [40.95, -3], [41.6, 0], [50.7, 0],
+  [27.6, 0], [50.7, 0],
 ]);
 
 const Camera: React.FC<{ t: number; children: React.ReactNode }> = ({ t, children }) => {
@@ -138,6 +138,9 @@ const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: st
 /* ================================================================== */
 /* Scene A — dot → wave → many waves (0 – 15.3)                       */
 /* ================================================================== */
+// opening hook / loop seam: the film starts on (and loops back to) a frame filled by the blue dot
+const HOOK_END = 0.6;
+const HOOK_R0 = 2300;
 const GLYPHS = ["dy/dx", "√x", "x²", "∫", "n!", "Δ", "sin θ", "f(x)", "π", "%", "∞", "Σ", "θ", "≈", "e^x", "∂"];
 
 const WaveScene: React.FC<{ t: number }> = ({ t }) => {
@@ -173,7 +176,10 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
   const headY = CY - ampEnd * (0.12 + u * 0.88) * Math.sin(((penX - X0) / lam) * Math.PI * 2);
 
   // dot travel: centre → left start
-  const dotIn = prog(t, 0, 0.9, easeOutExpo);
+  // HOOK: a giant blue disc fills frame 0 and rushes down into the small dot (lands at HOOK_END)
+  const hook = prog(t, 0, HOOK_END, (x) => 1 - Math.pow(1 - x, 3.4));
+  const hookR = lerp(HOOK_R0, 11, hook);
+  const hookV = Math.abs(lerp(HOOK_R0, 11, prog(t + 1 / FPS, 0, HOOK_END, (x) => 1 - Math.pow(1 - x, 3.4))) - hookR);
   const toLeft = prog(t, 4.05, 4.9, easeInOut);
   let dx = lerp(CX, X0, toLeft);
   let dy = CY;
@@ -182,7 +188,7 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
     dy = headY;
   }
   const dotOp = (1 - prog(t, 9.7, 10.3)) + prog(t, 14.9, 15.2);
-  const dotScale = lerp(0.2, 1, dotIn) * (1 + 0.12 * Math.sin(t * 5) * (t < 4 ? 1 : 0));
+  const dotScale = 1 + 0.06 * Math.sin((t - HOOK_END) * 4) * (t > HOOK_END + 0.4 && t < 4 ? 1 : 0);
   if (t > 14.9) {
     dx = CX;
     dy = CY;
@@ -240,9 +246,24 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
         </svg>
       )}
       <div style={{ position: "absolute", left: 0, top: 0, transform: `scale(1)` }}>
-        <Dot x={dx} y={dy} r={11 * dotScale} color={t > 6 ? BLUE : INK} opacity={clamp(dotOp) * dotIn} />
+        {t < HOOK_END ? (
+          <div
+            style={{
+              position: "absolute",
+              left: CX - hookR,
+              top: CY - hookR,
+              width: hookR * 2,
+              height: hookR * 2,
+              borderRadius: "50%",
+              background: BLUE,
+              filter: hookV > 1 ? `blur(${Math.min(28, hookV * 0.12)}px)` : undefined,
+            }}
+          />
+        ) : (
+          <Dot x={dx} y={dy} r={11 * dotScale} color={BLUE} opacity={clamp(dotOp)} />
+        )}
       </div>
-      <Ripple t={t} at={0.05} x={CX} y={CY} />
+      <Ripple t={t} at={HOOK_END} x={CX} y={CY} color={BLUE} size={220} />
       <Ripple t={t} at={15.2} x={CX} y={CY} color={BLUE} size={220} />
     </AbsoluteFill>
   );
@@ -515,9 +536,40 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
 /* ================================================================== */
 const STEPS = ["iPrimary", "iLowerSecondary", "International GCSE", "International A Level", "Universities worldwide"];
 const NODE_T = [27.17, 28.38, 29.59, 30.8, 32.01];
-const NX = 215;
-const NY0 = 470;
-const NGAP = 128;
+const NX = 150;
+const NY0 = 420;
+const NGAP = 150;
+const NR = 30; // badge radius
+const ICONS = [
+  "M4 20l4-1L19 8l-3-3L5 16l-1 4z M14 7l3 3", // pencil
+  "M3 5c3-1 6-1 9 1v13c-3-2-6-2-9-1z M21 5c-3-1-6-1-9 1v13c3-2 6-2 9-1z", // book
+  "M5 3h14v11H5z M8 7h8 M8 10h5 M12 14l-2 6 2-1 2 1-2-6", // certificate
+  "M2 9l10-5 10 5-10 5z M6 11v5c3 2 9 2 12 0v-5 M22 9v5", // graduation cap
+  "M12 3a9 9 0 1 0 0.01 0z M3 12h18 M12 3c3 3 3 15 0 18 M12 3c-3 3-3 15 0 18", // globe
+];
+const NodeBadge: React.FC<{ x: number; y: number; s: number; color: string; filled: boolean; icon: string }> = ({ x, y, s, color, filled, icon }) => (
+  <div
+    style={{
+      position: "absolute",
+      left: x - NR,
+      top: y - NR,
+      width: NR * 2,
+      height: NR * 2,
+      borderRadius: "50%",
+      background: filled ? color : "#FFFFFF",
+      border: `2.5px solid ${color}`,
+      boxShadow: "0 10px 24px rgba(80,55,25,0.14)",
+      transform: `scale(${s})`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <svg width={30} height={30} viewBox="0 0 24 24" fill="none" stroke={filled ? "#FFFFFF" : color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={icon} />
+    </svg>
+  </div>
+);
 
 const Pathway: React.FC<{ t: number }> = ({ t }) => {
   if (t < 26.9 || t > 36.4) return null;
@@ -566,22 +618,26 @@ const Pathway: React.FC<{ t: number }> = ({ t }) => {
         const col = isLast ? BLUE : INK;
         return (
           <React.Fragment key={i}>
-            <Dot x={x} y={y} r={(isLast ? 11 : 8) * (i === 0 && t < at ? 1 : Math.max(0.2, p))} color={col} glow={isLast ? 1.4 : 0.7} />
-            <Ripple t={t} at={at} x={n.x} y={n.y} color={col} size={isLast ? 160 : 90} />
+            {i === 0 && t < at + 0.05 ? (
+              <Dot x={x} y={y} r={11} color={BLUE} glow={0.8} />
+            ) : (
+              <NodeBadge x={x} y={y} s={Math.max(0.05, p) * (1 - merge * 0.75)} color={col} filled={isLast} icon={ICONS[i]} />
+            )}
+            <Ripple t={t} at={at} x={n.x} y={n.y} color={col} size={isLast ? 180 : 110} />
             <div
               style={{
                 position: "absolute",
-                left: NX + 48,
+                left: NX + NR + 34,
                 top: n.y,
                 transform: `translate(${(1 - lp) * -30}px, -50%)`,
                 fontFamily: SANS,
                 fontWeight: isLast ? 700 : 600,
-                fontSize: isLast ? 52 : 46,
+                fontSize: isLast ? 62 : 58,
                 letterSpacing: "-0.02em",
                 color: col,
                 opacity: lp * (1 - labelsOut),
                 filter: `blur(${(1 - lp) * 10 + labelsOut * 10}px)`,
-                textShadow: isLast ? `0 0 30px ${BLUE}aa` : undefined,
+                textShadow: "0 10px 26px rgba(80,55,25,0.1)",
                 whiteSpace: "nowrap",
               }}
             >
@@ -605,10 +661,11 @@ const STARS = new Array(520).fill(0).map((_, i) => {
 const DROP = 36.23;
 
 const Starfield: React.FC<{ t: number }> = ({ t }) => {
-  if (t < DROP - 0.02 || t > 41.2) return null;
+  if (t < DROP - 0.02 || t > 40.45) return null;
+  const starFade = 1 - prog(t, 39.85, 40.4, easeInOut);
   const pos = (tt: number) => {
     const burst = easeOutExpo(clamp((tt - DROP) / 1.2));
-    const implode = easeInExpo(clamp((tt - 40.25) / 0.75));
+    const implode = 0;
     const drift = 1 + Math.max(0, tt - DROP) * 0.05;
     return { burst, implode, drift };
   };
@@ -628,7 +685,7 @@ const Starfield: React.FC<{ t: number }> = ({ t }) => {
     const size = 1.1 + s.z * 2.4;
     const col = s.blue ? BLUE : "#2A2F45";
     lines.push(
-      <line key={i} x1={x0} y1={y0} x2={x1 + 0.01} y2={y1} stroke={col} strokeWidth={size} strokeLinecap="round" opacity={(0.35 + s.z * 0.6) * tw} />
+      <line key={i} x1={x0} y1={y0} x2={x1 + 0.01} y2={y1} stroke={col} strokeWidth={size} strokeLinecap="round" opacity={(0.35 + s.z * 0.6) * tw * starFade} />
     );
   });
   return (
@@ -638,8 +695,58 @@ const Starfield: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
+/* fly-through: hole of the second "0" in "8,000" (measured: Inter 800 220px, -0.055em, centred, top CY-40) */
+const HOLE = { x: 566.0, y: 699.4 };
+const FLY_A = 40.0;
+const FLY_B = 40.75;
+const flyZoom = (t: number) => Math.exp(Math.log(70) * easeInExpo(prog(t, FLY_A, FLY_B)));
+/** where "your dot" sits: at the hole while flying through, then glides to the centre */
+const dotOrigin = (t: number) => {
+  const k = easeInOut(prog(t, FLY_B, FLY_B + 0.75));
+  return { x: lerp(HOLE.x, CX, k), y: lerp(HOLE.y, CY, k) };
+};
+
+/* "This year, I'm one of them": the crowd of learners, your dot in the middle */
+const CROWD = (() => {
+  const out: { x: number; y: number; r: number; a: number; ph: number }[] = [];
+  const SP = 30;
+  let k = 0;
+  for (let gy = -1950; gy <= 1950; gy += SP) {
+    for (let gx = -1250; gx <= 1250; gx += SP) {
+      const x = gx + (rand(k * 1.37) - 0.5) * SP * 0.8;
+      const y = gy + (rand(k * 2.91) - 0.5) * SP * 0.8;
+      k++;
+      if (Math.hypot(x, y) < 40) continue; // keep clear room around your dot
+      out.push({ x, y, r: 2.2 + rand(k * 5.3) * 1.8, a: 0.2 + rand(k * 7.1) * 0.35, ph: rand(k * 3.3) * 6.28 });
+    }
+  }
+  return out;
+})();
+const crowdScale = smoothKeys([[40.3, 2.6], [FLY_B, 1.35], [41.6, 1.0], [43.25, 0.82], [44.05, 7.0]]);
+const LearnersField: React.FC<{ t: number }> = ({ t }) => {
+  if (t < 40.4 || t > 44.1) return null;
+  const o = dotOrigin(t);
+  const fs = crowdScale(t);
+  const op = prog(t, 40.45, 40.66, easeInOut) * (1 - prog(t, 43.5, 44.05, easeInOut));
+  const dots: React.ReactNode[] = [];
+  CROWD.forEach((d, i) => {
+    const x = o.x + d.x * fs;
+    const y = o.y + d.y * fs;
+    if (x < -20 || x > 1100 || y < -20 || y > 1940) return;
+    // keep the headline band readable
+    const band = Math.max(0, 1 - Math.abs(y - 1010) / 150);
+    const tw = 0.75 + 0.25 * Math.sin(t * 1.6 + d.ph);
+    dots.push(<circle key={i} cx={x} cy={y} r={d.r * Math.min(1.6, Math.sqrt(fs))} fill="#2A2F45" opacity={d.a * tw * (1 - 0.75 * band)} />);
+  });
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, opacity: op }}>
+      {dots}
+    </svg>
+  );
+};
+
 const Counter: React.FC<{ t: number }> = ({ t }) => {
-  if (t < DROP || t > 40.8) return null;
+  if (t < DROP || t > FLY_B + 0.02) return null;
   // critically damped count (no overshoot), lands exactly on 8,000 before the particles take over
   const cd = (tt: number) => {
     const x = Math.max(0, tt - (DROP + 0.1)) * 4.2;
@@ -654,11 +761,20 @@ const Counter: React.FC<{ t: number }> = ({ t }) => {
   const glint = prog(t, 38.6, 39.6, easeInOut);
   const blurY = Math.min(10, vel / 30);
   const inP = prog(t, DROP, DROP + 0.5, easeOutExpo);
-  const out = prog(t, 40.0, 40.45, easeInExpo);
+  const zoomS = flyZoom(t);
+  const zoomV = Math.abs(flyZoom(t + 1 / FPS) - zoomS) / Math.max(1, zoomS);
+  const out = prog(t, FLY_B - 0.1, FLY_B, easeInOut);
   const sub1 = prog(t, 37.0, 37.7, easeOutExpo);
   const sub2 = prog(t, 37.25, 37.95, easeOutExpo);
   return (
-    <AbsoluteFill style={{ opacity: 1 - out, filter: out > 0 ? `blur(${out * 16}px)` : undefined }}>
+    <AbsoluteFill
+      style={{
+        opacity: 1 - out,
+        transformOrigin: `${HOLE.x}px ${HOLE.y}px`,
+        transform: `scale(${zoomS})`,
+        filter: zoomV > 0.02 ? `blur(${Math.min(5, zoomV * 30)}px)` : undefined,
+      }}
+    >
       <div
         style={{
           position: "absolute",
@@ -811,14 +927,16 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
   // (measuring per tab made the dot alternate between two positions -> visible shake).
   const anchor = { x: 805.7, y: TITLE_TOP + TS + 125 };
 
-  const show = t > 40.5;
-  const dotIn = prog(t, 40.55, 41.0, easeOutExpo);
+  const show = t > 40.62;
+  const dotIn = prog(t, 40.62, 40.85, easeOutExpo);
+  const o = dotOrigin(t);
+  // LOOP: zoom into the full stop until blue fills the frame (= frame 0 of the film)
+  const loopZ = Math.exp(Math.log(260) * Math.pow(prog(t, 49.6, 50.62), 3));
   const fly = prog(t, TITLE_AT + 0.1, TITLE_AT + 0.75, easeInOut);
   const end = anchor;
   const arcY = -140 * Math.sin(Math.PI * fly);
-  const dx = lerp(CX, end.x, fly);
-  const dy = lerp(CY, end.y, fly) + arcY;
-  const beat = 1 + 0.08 * Math.exp(-((((t - 41.06) % 0.6037) + 0.6037) % 0.6037) * 6);
+  const dx = lerp(o.x, end.x, fly);
+  const dy = lerp(o.y, end.y, fly) + arcY;
   const sweep = prog(t, TITLE_AT + 1.2, TITLE_AT + 2.2, easeInOut);
   const charReveal = (txt: string, at: number) =>
     txt.split("").map((ch, i) => {
@@ -830,9 +948,8 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
       );
     });
   const tags = prog(t, 48.6, 49.3, easeOutExpo);
-  const fadeEnd = prog(t, 50.2, 50.7);
   return (
-    <AbsoluteFill data-root="1" style={{ opacity: 1 - fadeEnd }}>
+    <AbsoluteFill data-root="1" style={{ transformOrigin: `${end.x}px ${end.y}px`, transform: `scale(${loopZ})` }}>
       {/* title */}
       <div
         style={{
@@ -873,10 +990,66 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           #PearsonLearnerCreator
         </div>
       </div>
-      {show && <Dot x={dx} y={dy} r={14 * dotIn * (fly > 0 ? 1 : beat)} color={BLUE} glow={1.5} />}
-      <Ripple t={t} at={40.95} x={CX} y={CY} color={BLUE} size={200} />
+      {show && <Dot x={dx} y={dy} r={14 * dotIn} color={BLUE} glow={1.5} />}
+      <Ripple t={t} at={40.95} x={dotOrigin(40.95).x} y={dotOrigin(40.95).y} color={BLUE} size={200} />
+      <Ripple t={t} at={42.2} x={CX} y={CY} color={BLUE} size={160} />
       <Ripple t={t} at={TITLE_AT + 0.75} x={end.x} y={end.y} color={BLUE} size={170} />
       <Sparkles t={t} at={TITLE_AT + 0.75} x={end.x} y={end.y} color={BLUE} n={12} spread={220} seed={5} />
+    </AbsoluteFill>
+  );
+};
+
+
+/* ================================================================== */
+/* Foreground depth: big, soft, out-of-focus symbols drifting past      */
+/* the lens near the frame edges (never behind the headline band).      */
+/* ================================================================== */
+type Fg = [number, number, string, number, number, number, number, number, string];
+// [from, to, glyph, x, y, vx (px/s), vy, size, colour]
+const FG: Fg[] = [
+  [9.7, 15.3, "∫", 110, 300, 26, -10, 380, INK],
+  [9.7, 15.3, "π", 960, 1660, -30, -8, 340, BLUE],
+  [10.1, 14.6, "Σ", 990, 330, -18, 12, 300, INK],
+  [10.1, 14.6, "x²", 70, 1690, 22, -14, 260, BLUE],
+  [14.7, 21.3, "{ }", 120, 1660, 24, -12, 300, BLUE],
+  [14.7, 21.3, "</>", 950, 290, -26, 10, 260, INK],
+  [15.8, 21.3, ";", 1000, 1700, -20, -16, 360, INK],
+  [15.8, 21.3, "( )", 90, 300, 20, 14, 280, INK],
+  [21.9, 26.5, "○", 980, 1680, -22, -10, 380, BLUE],
+  [21.9, 26.5, "+", 80, 330, 26, 12, 360, INK],
+  [27.3, 35.2, "●", 990, 1640, -16, -14, 300, BLUE],
+  [27.3, 35.2, "○", 70, 260, 18, 10, 340, INK],
+];
+const Foreground: React.FC<{ t: number }> = ({ t }) => {
+  const depth = 1 + (camScale(t) - 1) * 2.4; // nearer than the scene: moves more with the camera
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none", transformOrigin: `${CX}px ${CY}px`, transform: `scale(${depth})` }}>
+      {FG.map(([a, b, g, x, y, vx, vy, size, col], i) => {
+        if (t < a || t > b) return null;
+        const env = prog(t, a, a + 0.7, easeInOut) * (1 - prog(t, b - 0.7, b, easeInOut));
+        const dt = t - a;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x + vx * dt,
+              top: y + vy * dt,
+              transform: "translate(-50%, -50%)",
+              fontFamily: SANS,
+              fontWeight: 300,
+              fontSize: size,
+              lineHeight: 1,
+              color: col,
+              opacity: 0.1 * env,
+              filter: "blur(12px)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {g}
+          </div>
+        );
+      })}
     </AbsoluteFill>
   );
 };
@@ -896,15 +1069,19 @@ export const V1: React.FC = () => {
         <BraceScene t={t} />
         <Phone t={t} />
         <Pathway t={t} />
+        <LearnersField t={t} />
         <Starfield t={t} />
         <Counter t={t} />
         <Formation t={t} />
         <Ending t={t} />
         <Sparkles t={t} at={38.4} x={880} y={CY - 50} color={BLUE} n={10} spread={170} seed={4} />
       </Camera>
+      <Foreground t={t} />
       {/* headlines float on their own layer (subtle counter-parallax) */}
       <AbsoluteFill style={{ transform: `translateY(${(camScale(t) - 1) * -40}px)` }}>
-        <Kinetic t={t} text="Every big thing|starts as one|small *dot.*" inAt={0.45} outAt={3.85} accent={BLUE} y={TY} />
+        {/* giant "dot." slams in, then flies into its slot in the sentence (measured: scripts in scratch, Inter 700 84px) */}
+        <GiantWord t={t} word="dot." color={BLUE} size={84} weight={700} from={{ x: CX, y: 1000, scale: 3.6 }} to={{ x: 651.73, y: 1332.42 }} inAt={0.5} moveAt={1.2} until={3.7} />
+        <Kinetic t={t} text="Every big thing|starts as one|small *dot.*" inAt={1.15} outAt={3.85} accent={BLUE} y={TY} hideWord="dot." hideUntil={3.7} />
         <Kinetic t={t} text="One question." inAt={4.35} outAt={5.75} accent={BLUE} y={TY} />
         <Kinetic t={t} text="One answer." inAt={6.04} outAt={7.0} accent={BLUE} y={TY} />
         <Kinetic t={t} text="One more *try.*" inAt={7.25} outAt={9.35} accent={BLUE} y={TY} />
@@ -918,7 +1095,6 @@ export const V1: React.FC = () => {
       </AbsoluteFill>
       <Flash t={t} at={DROP} color="#FFFFFF" peak={0.45} dur={0.6} />
       <FilmLook />
-      <AbsoluteFill style={{ background: PAPER, opacity: 1 - prog(t, 0, 0.6, easeOut) }} />
     </AbsoluteFill>
   );
 };

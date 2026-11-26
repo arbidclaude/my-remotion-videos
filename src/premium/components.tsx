@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
 import { MONO, SANS } from "./fonts";
-import { clamp, easeInExpo, easeOutBack, easeOutExpo, mixColor, prog, rand } from "./lib";
+import { clamp, easeInExpo, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
 
 /* Warm-white "paper" theme shared by both films */
 export const PAPER = "#FBF7F0";
@@ -28,7 +28,11 @@ export const Kinetic: React.FC<{
   exitDir?: 1 | -1;
   /** per-character mask reveal (for short titles) */
   chars?: boolean;
-}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1, chars = false }) => {
+  /** keep this word's slot in the layout but don't draw it (a giant copy flies into it) */
+  hideWord?: string;
+  /** hideWord is hidden only before this time (then the real word takes over, e.g. for its exit) */
+  hideUntil?: number;
+}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1, chars = false, hideWord, hideUntil = 1e9 }) => {
   if (t < inAt - 0.05 || t > outAt + 0.6) return null;
   const lines = text.split("|");
   const hi = mixColor(accent, "#ffffff", 0.55);
@@ -60,7 +64,7 @@ export const Kinetic: React.FC<{
             const start = inAt + li * 0.09 + wi * stagger * 0.8 + (isAccent ? 0.05 : 0);
             const p = prog(t, start, start + 0.7, easeOutExpo);
             const e = prog(t, outAt + li * 0.05 + wi * 0.02, outAt + li * 0.05 + wi * 0.02 + 0.45, easeInExpo);
-            const op = clamp(p * 1.6) * (1 - e);
+            const op = word === hideWord && t < hideUntil ? 0 : clamp(p * 1.6) * (1 - e);
             // rise from below the mask, leave upward through it
             const ty = (1 - p) * 1.1 * size * 1.1 + e * exitDir * 1.1 * size * 1.1;
             const blur = (1 - p) * 5 + e * 4;
@@ -197,60 +201,66 @@ const DUST = new Array(46).fill(0).map((_, i) => ({
   ph: rand(i * 9.1) * 6.28,
   big: rand(i * 3.3) > 0.82,
 }));
-export const Ambience: React.FC<{ t: number; tint: string; tint2?: string; strength?: number }> = ({ t, tint, tint2 = "#FFC9A0", strength = 1 }) => (
-  <AbsoluteFill style={{ pointerEvents: "none" }}>
-    {/* light leaks */}
-    <div
-      style={{
-        position: "absolute",
-        left: -300 + Math.sin(t * 0.13) * 220,
-        top: -200 + Math.cos(t * 0.11) * 160,
-        width: 1200,
-        height: 1000,
-        borderRadius: "50%",
-        background: `radial-gradient(circle, ${tint2}55 0%, transparent 65%)`,
-        opacity: 0.3 * strength,
-        filter: "blur(30px)",
-      }}
-    />
-    <div
-      style={{
-        position: "absolute",
-        right: -380 + Math.cos(t * 0.09) * 240,
-        bottom: -240 + Math.sin(t * 0.12) * 200,
-        width: 1300,
-        height: 1100,
-        borderRadius: "50%",
-        background: `radial-gradient(circle, ${tint}33 0%, transparent 65%)`,
-        opacity: 0.3 * strength,
-        filter: "blur(30px)",
-      }}
-    />
-    {/* dust + bokeh */}
-    {DUST.map((d, i) => {
-      const y = (((d.y - t * d.sp * d.z) % 2000) + 2000) % 2000 - 40;
-      const x = d.x + Math.sin(t * 0.5 + d.ph) * 26 * d.z;
-      const r = d.big ? 10 + d.z * 18 : 1.6 + d.z * 3;
-      const tw = 0.55 + 0.45 * Math.sin(t * 1.3 + d.ph);
-      return (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            left: x - r,
-            top: y - r,
-            width: r * 2,
-            height: r * 2,
-            borderRadius: "50%",
-            background: d.big ? `radial-gradient(circle, ${i % 2 ? tint : tint2}44 0%, transparent 70%)` : i % 3 ? "#B89B78" : tint,
-            opacity: (d.big ? 0.7 : 0.28) * tw * d.z * strength,
-            filter: d.big ? "blur(2px)" : undefined,
-          }}
-        />
-      );
-    })}
-  </AbsoluteFill>
-);
+export const Ambience: React.FC<{ t: number; tint: string; tint2?: string; strength?: number; period?: number }> = ({ t, tint, tint2 = "#FFC9A0", strength = 1, period }) => {
+  // With `period`, every drift/sway/twinkle completes whole cycles over the film, so the last
+  // frame matches frame 0 (seamless loop). Each rate is snapped to the nearest whole cycle count.
+  const w = (rate: number) => (period ? (Math.max(1, Math.round((rate * period) / (2 * Math.PI))) * 2 * Math.PI) / period : rate);
+  const fall = (speed: number) => (period ? (Math.max(1, Math.round((speed * period) / 2000)) * 2000) / period : speed);
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      {/* light leaks */}
+      <div
+        style={{
+          position: "absolute",
+          left: -300 + Math.sin(t * w(0.13)) * 220,
+          top: -200 + Math.cos(t * w(0.11)) * 160,
+          width: 1200,
+          height: 1000,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${tint2}55 0%, transparent 65%)`,
+          opacity: 0.3 * strength,
+          filter: "blur(30px)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          right: -380 + Math.cos(t * w(0.09)) * 240,
+          bottom: -240 + Math.sin(t * w(0.12)) * 200,
+          width: 1300,
+          height: 1100,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${tint}33 0%, transparent 65%)`,
+          opacity: 0.3 * strength,
+          filter: "blur(30px)",
+        }}
+      />
+      {/* dust + bokeh */}
+      {DUST.map((d, i) => {
+        const y = (((d.y - t * fall(d.sp * d.z)) % 2000) + 2000) % 2000 - 40;
+        const x = d.x + Math.sin(t * w(0.5) + d.ph) * 26 * d.z;
+        const r = d.big ? 10 + d.z * 18 : 1.6 + d.z * 3;
+        const tw = 0.55 + 0.45 * Math.sin(t * w(1.3) + d.ph);
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x - r,
+              top: y - r,
+              width: r * 2,
+              height: r * 2,
+              borderRadius: "50%",
+              background: d.big ? `radial-gradient(circle, ${i % 2 ? tint : tint2}44 0%, transparent 70%)` : i % 3 ? "#B89B78" : tint,
+              opacity: (d.big ? 0.7 : 0.28) * tw * d.z * strength,
+              filter: d.big ? "blur(2px)" : undefined,
+            }}
+          />
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
 
 /* Sparkle burst: 4-point stars popping around a point */
 export const Sparkles: React.FC<{ t: number; at: number; x: number; y: number; color: string; n?: number; spread?: number; seed?: number }> = ({ t, at, x, y, color, n = 9, spread = 170, seed = 1 }) => {
@@ -283,3 +293,58 @@ export const Sparkles: React.FC<{ t: number; at: number; x: number; y: number; c
 };
 
 export { Img };
+
+/* ------------------------------------------------------------------ */
+/* GiantWord: a word slams in huge, holds, then flies + shrinks into    */
+/* its exact slot in a Kinetic sentence (pair with hideWord/hideUntil). */
+/* to.x / to.y are the measured centre of that word's span.             */
+/* ------------------------------------------------------------------ */
+export const GiantWord: React.FC<{
+  t: number;
+  word: string;
+  color: string;
+  size: number;
+  weight: number;
+  from: { x: number; y: number; scale: number };
+  to: { x: number; y: number };
+  inAt: number;
+  moveAt: number;
+  moveDur?: number;
+  until: number;
+}> = ({ t, word, color, size, weight, from, to, inAt, moveAt, moveDur = 0.65, until }) => {
+  if (t < inAt || t >= until) return null;
+  const pin = prog(t, inAt, inAt + 0.45, easeOutExpo);
+  const mv = (tt: number) => {
+    const x = clamp((tt - moveAt) / moveDur);
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; // easeInOutCubic
+  };
+  const m = mv(t);
+  const x = lerp(from.x, to.x, m);
+  const y = lerp(from.y, to.y, m);
+  const sc = Math.exp(lerp(Math.log(from.scale), 0, m)) * lerp(1.12, 1, pin);
+  const speed = Math.abs(mv(t + 1 / 30) - m) * 30; // fraction of the move per second
+  const blur = (1 - pin) * 14 + Math.min(6, speed * 4);
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: `translate(-50%, -50%) scale(${sc}) translateY(${(1 - pin) * 0.35 * size}px)`,
+        display: "inline-block",
+        whiteSpace: "nowrap",
+        fontFamily: SANS,
+        fontWeight: weight,
+        fontSize: size,
+        letterSpacing: "-0.035em",
+        lineHeight: 1.1,
+        color,
+        opacity: clamp(pin * 1.6),
+        filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
+        textShadow: "0 10px 30px rgba(80,55,25,0.1)",
+      }}
+    >
+      {word}
+    </span>
+  );
+};
