@@ -1,6 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
-import { CameraMotionBlur } from "@remotion/motion-blur";
+import { AbsoluteFill, Freeze, Img, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { MONO, SANS, SERIF } from "./fonts";
 import { clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
 
@@ -580,11 +579,14 @@ export const RollWord: React.FC<{ t: number; text: string; inAt: number; outAt: 
 };
 
 /* ------------------------------------------------------------------ */
-/* FilmBlur: real camera motion blur (several sub-frame samples blended, */
-/* 180° shutter) inside fast-motion windows; a single sample elsewhere,  */
-/* so the component tree stays the same on every frame.                 */
-/* Children must read the time themselves (useCurrentFrame) so each     */
-/* sample sees its own sub-frame time.                                   */
+/* FilmBlur: real camera motion blur. Inside fast-motion windows the    */
+/* scene is rendered at several sub-frame times across a 180° shutter   */
+/* (centred on the frame) and averaged; elsewhere one sample, and the   */
+/* first layer keeps its key so the tree (and any state) stays mounted. */
+/* Averaging is a running mean (layer k at opacity 1/k over the layers  */
+/* below): unbiased, unlike summing n layers at 1/n with plus-lighter,  */
+/* which rounds every frame ~3 levels brighter and flickers at window   */
+/* edges. Children must read time themselves (useCurrentFrame).        */
 /* ------------------------------------------------------------------ */
 /** windows: [start, end, samples?] in story time; returns the sample count to use at t (1 = no blur) */
 export const blurSamples = (t: number, w: number[][]) => {
@@ -593,8 +595,21 @@ export const blurSamples = (t: number, w: number[][]) => {
   return n;
 };
 // extreme zooms (fly-throughs) need many samples, or the blur breaks into stepped ghost copies
-export const FilmBlur: React.FC<{ samples: number; children: React.ReactNode }> = ({ samples, children }) => (
-  <CameraMotionBlur shutterAngle={180} samples={samples}>
-    {children}
-  </CameraMotionBlur>
-);
+export const FilmBlur: React.FC<{ samples: number; children: React.ReactNode }> = ({ samples, children }) => {
+  const f = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  const SHUTTER = 0.5; // 180°: half a frame of exposure
+  return (
+    <AbsoluteFill>
+      {new Array(Math.max(1, samples)).fill(0).map((_, i) => {
+        const off = samples > 1 ? SHUTTER * ((i + 0.5) / samples - 0.5) : 0;
+        const at = Math.min(durationInFrames - 1, Math.max(0, f + off));
+        return (
+          <AbsoluteFill key={i} style={{ opacity: 1 / (i + 1) }}>
+            <Freeze frame={at}>{children}</Freeze>
+          </AbsoluteFill>
+        );
+      })}
+    </AbsoluteFill>
+  );
+};

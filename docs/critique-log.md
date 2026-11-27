@@ -76,3 +76,26 @@ onset within ±80 ms (≈2 frames) of its visual event.
 
 Verified from round 2: "BEST FRIEND" now settles from above the pill; the circle sits clear of "got"; the 40.7 s
 line swap is clean.
+
+## Round 4 (full-resolution renders)
+
+Critiqued the exact delivery files (1080×1920, 30 fps, motion blur on): a frame every 0.5 s for both films,
+8 fps strips of every fast move, loudness, frame counts, loop seams, and frame-by-frame background brightness
+across every blur-window edge.
+
+**What was weak**
+- Picture, type and timing: nothing new; every fix from rounds 1–3 holds at full resolution.
+- But a measurement caught a real defect: the blur library adds its samples together at 1/n opacity
+  ("plus-lighter"), and the 8-bit rounding made every blurred frame ~3 levels (≈1.4 %) brighter. The whole
+  frame therefore stepped up and down at every blur-window edge, ~30 faint flickers across the two films,
+  and V1's last frame came out lighter than its first (loop seam 35.8 dB vs 43.7 dB for a normal step).
+
+**What changed**
+- Replaced the library with an own FilmBlur: the samples are a running mean (layer k at opacity 1/k over the
+  layers below), which has no rounding bias, and the 180° shutter is now centred on the frame instead of
+  trailing ahead of it. The first sample keeps its key, so state stays mounted.
+- Re-tested at the window edges: brightness is flat across the edge (V1 216.1 → 216.1; V2 step 0.7 levels,
+  ordinary frame-to-frame change, was 3.6). Blur quality checked mid-window on the "8,000" zoom, the
+  "gamer." slam and the fly-through the "6": smooth smear.
+
+## Round 5 (final renders after the blur fix)
