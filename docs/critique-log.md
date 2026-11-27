@@ -34,3 +34,25 @@ V2 level rail, V2 hand-drawn circle on "59.", V2 59 → 60 odometer transform, r
   has gone; tens and units roll together (no "50").
 - Fly-through window rendered with 16 samples.
 - "And that freedom…" enters at 40.6 s; the count-up block fades in from 43.28 s.
+
+## Round 2
+
+Checked every round-1 fix in motion (8 fps strips): title order, 43.5 s swap, loop zoom and fly-through
+blur, and the 59 → 60 roll (it now never reads "I got 60" or "50") are all clean. Then a close-up type pass
+at the QA render's full width.
+
+**What was weak**
+- V2 40.6 s: a sliver of overlap was left ("And" rose while "freedom." was still leaving).
+- Serif-italic feeling words read a touch light next to the bold sans (Instrument Serif has thin strokes),
+  "waiting." especially.
+- V2 22 s: the "BEST FRIEND" label slid up from behind the message pill and was briefly clipped by it.
+- V2 48 s: the hand-drawn circle still grazed the "t" of "got".
+
+**What changed**
+- "And that freedom made…" enters at 40.72 s.
+- Serif words set at 1.25 em (was 1.2 em) so they hold their weight on a phone.
+- The label now settles down from above the pill (never behind it).
+- Circle moved 8 px right and made 6 px narrower; it now sits clear of "got".
+
+Checked and kept: level rail legibility and colours per chapter, viewfinder + "YOU" tag, callout leader
+lines, serif words in every line they appear in.

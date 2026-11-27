@@ -631,7 +631,7 @@ const MorphBubble: React.FC<{ t: number; s: number }> = ({ t, s }) => {
   const who = prog(t, at + 0.6, at + 0.95, easeOutExpo);
   return (
     <div style={{ position: "absolute", left: 0, top: 0, opacity: 1 - o, transform: `translateY(${-o * 20}px)`, filter: o ? `blur(${o * 8}px)` : undefined }}>
-      <div style={{ position: "absolute", left: PILL.x + 6, top: PILL.y - 41 + (1 - who) * 12, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: GREEN, opacity: who }}>BEST FRIEND</div>
+      <div style={{ position: "absolute", left: PILL.x + 6, top: PILL.y - 41 - (1 - who) * 12, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: GREEN, opacity: who }}>BEST FRIEND</div>
       <div
         style={{
           position: "absolute",
@@ -1038,10 +1038,10 @@ const CIRCLE59 = (() => {
     const u = i / N;
     const th = th0 + u * Math.PI * 2 * 1.13;
     const k = 1 + 0.04 * Math.sin(3 * th + 1) + 0.05 * u;
-    const ex = Math.cos(th) * 96 * k;
+    const ex = Math.cos(th) * 90 * k;
     const ey = Math.sin(th) * 66 * k;
     const a = (-5 * Math.PI) / 180;
-    pts.push(`${i ? "L" : "M"}${(658 + ex * Math.cos(a) - ey * Math.sin(a)).toFixed(1)},${(1333 + ex * Math.sin(a) + ey * Math.cos(a)).toFixed(1)}`);
+    pts.push(`${i ? "L" : "M"}${(666 + ex * Math.cos(a) - ey * Math.sin(a)).toFixed(1)},${(1333 + ex * Math.sin(a) + ey * Math.cos(a)).toFixed(1)}`);
   }
   return pts.join(" ");
 })();
@@ -1196,7 +1196,7 @@ const V2Scene: React.FC = () => {
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
         <Kinetic t={t} text="No pressure.|Just ~freedom.~" inAt={38.03} outAt={40.25} accent={ORANGE} y={TY} />
-        <Kinetic t={t} text="And that freedom made|me want it even *more.*" inAt={40.6} outAt={42.7} accent={ORANGE} y={TY} size={76} />
+        <Kinetic t={t} text="And that freedom made|me want it even *more.*" inAt={40.72} outAt={42.7} accent={ORANGE} y={TY} size={76} />
         <Result t={t} />
         <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} hideWord="59." />
         <Score t={t} />

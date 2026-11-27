@@ -157,7 +157,7 @@ export const Kinetic: React.FC<{
                   transform: `translateY(${ty}px)${streakTf}`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                   color: isAccent ? accent : mode === "streak" && p < 1 ? mixColor("#E9A93B", color.startsWith("#") ? color : INK, p) : undefined,
-                  ...(isSerif ? { fontFamily: SERIF, fontStyle: "italic", fontWeight: 400, fontSize: "1.2em", letterSpacing: "-0.01em", lineHeight: 0.9, paddingRight: "0.06em" } : {}),
+                  ...(isSerif ? { fontFamily: SERIF, fontStyle: "italic", fontWeight: 400, fontSize: "1.25em", letterSpacing: "-0.01em", lineHeight: 0.9, paddingRight: "0.06em" } : {}),
                   textShadow: `0 10px 30px rgba(80,55,25,${0.1 * op})`,
                   backgroundImage: isAccent
                     ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, ${hi} ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
