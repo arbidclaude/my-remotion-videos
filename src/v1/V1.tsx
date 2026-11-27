@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS, SERIF } from "../premium/fonts";
-import { Ambience, Cursor, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, inWindows } from "../premium/components";
+import { Ambience, Cursor, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, blurSamples } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
@@ -810,7 +810,7 @@ const Reel: React.FC<{ t: number }> = ({ t }) => {
 const STEPS = ["iPrimary", "iLowerSecondary", "International GCSE", "International A Level", "Universities worldwide"];
 const NODE_T = [27.17, 28.38, 29.59, 30.8, 32.01];
 const NX = 150;
-const NY0 = 420;
+const NY0 = 480;
 const NGAP = 150;
 const NR = 30; // badge radius
 const ICONS = [
@@ -1250,7 +1250,7 @@ const Formation: React.FC<{ t: number }> = ({ t }) => {
 /* Scene F — ending: blue dot → full stop of the title (40.9 – end)    */
 /* ================================================================== */
 const TITLE_AT = 47.69;
-const GRADES_AT = 48.22;
+const GRADES_AT = 48.32;
 const TS = 156;
 const TITLE_TOP = 860;
 const SLOT = 34;
@@ -1300,7 +1300,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           color: INK,
         }}
       >
-        <div style={{ overflow: "hidden", padding: "0.05em 0.2em 0.15em", margin: "-0.05em 0 -0.15em" }}>{charReveal("Beyond the", TITLE_AT)}</div>
+        <div style={{ overflow: "hidden", padding: "0.05em 0.2em 0.15em", margin: "-0.05em 0 -0.15em" }}>{charReveal("Beyond the", TITLE_AT, 0.02, 0.6)}</div>
         <div style={{ position: "relative", display: "inline-block" }}>
           {t < TITLE_AT + 1.35 ? (
             <span style={{ display: "inline-block", overflow: "hidden", padding: "0.05em 0 0.15em", margin: "-0.05em 0 -0.15em", verticalAlign: "bottom" }}>{charReveal("Grades", GRADES_AT, 0.022, 0.55)}</span>
@@ -1320,7 +1320,7 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
         </div>
       </div>
       {/* the word before "Grades" rolls through the story first: "Beyond the numbers" -> "Grades" */}
-      <RollWord t={t} text="numbers" inAt={TITLE_AT + 0.04} outAt={GRADES_AT - 0.03} x={523} y={TITLE_TOP + TS + 78} size={TS} weight={800} color={INK} letterSpacing="-0.05em" />
+      <RollWord t={t} text="numbers" inAt={TITLE_AT + 0.17} outAt={GRADES_AT - 0.04} x={523} y={TITLE_TOP + TS + 78} size={TS} weight={800} color={INK} letterSpacing="-0.05em" />
       <TypedTags t={t} at={48.6} lines={["#OPLA2026  #BeyondTheGrades", "#PearsonLearnerCreator"]} y={TITLE_TOP + 2 * TS + 64} accent={BLUE} />
       {show && <Dot x={dx} y={dy} r={14 * dotIn} color={BLUE} glow={1.5} />}
       <Ripple t={t} at={40.95} x={dotOrigin(40.95).x} y={dotOrigin(40.95).y} color={BLUE} size={200} />
@@ -1388,8 +1388,8 @@ const Foreground: React.FC<{ t: number }> = ({ t }) => {
 
 /* ================================================================== */
 // fast moves rendered with real sub-frame motion blur (story time)
-const BLUR_WINDOWS: [number, number][] = [
-  [0, 0.7], [1.15, 1.95], [8.75, 9.7], [14.3, 15.9], [23.9, 27.6], [32.7, 33.6], [35.2, 36.7], [39.9, 41.0], [47.7, 48.5], [49.6, 50.7],
+const BLUR_WINDOWS: number[][] = [
+  [0, 0.7], [1.15, 1.95], [8.75, 9.7], [14.3, 15.9], [23.9, 27.6], [32.7, 33.6], [35.2, 36.7], [39.9, 41.0, 16], [47.7, 48.5], [49.6, 50.7, 16],
 ];
 const V1Scene: React.FC = () => {
   const frame = useCurrentFrame();
@@ -1428,7 +1428,7 @@ const V1Scene: React.FC = () => {
         <Reel t={t} />
         <SelectBox t={t} at={33.7} until={35.1} x={432.48} y={1348.91} w={410.33} h={79.19} color={BLUE} />
         <Kinetic t={t} text="This year,|I'm *one of them.*" inAt={41.06} outAt={43.2} accent={BLUE} y={1010} />
-        <Kinetic t={t} text="Your dot|is ~waiting.~" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
+        <Kinetic t={t} text="Your dot|is ~waiting.~" inAt={43.66} outAt={45.55} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Start small.|Keep ~going.~" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
       </AbsoluteFill>
       <Flash t={t} at={DROP} color="#FFFFFF" peak={0.45} dur={0.6} />
@@ -1441,7 +1441,7 @@ export const V1: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: BG }}>
       <Audio src={staticFile("audio/mix-v1.wav")} />
-      <FilmBlur active={inWindows(t, BLUR_WINDOWS)}>
+      <FilmBlur samples={blurSamples(t, BLUR_WINDOWS)}>
         <V1Scene />
       </FilmBlur>
       <FilmLook />

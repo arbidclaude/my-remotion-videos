@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Cursor, Decode, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, LightStreak, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, inWindows } from "../premium/components";
+import { Ambience, Cursor, Decode, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, LightStreak, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, blurSamples } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
@@ -982,8 +982,9 @@ const hudGlass = (t: number) => prog(t, START_CLICK + 0.02, START_CLICK + 0.35, 
    the result's digits centre 439.8, 1320 at 250px -> flyer centre incl. "." 473.6. */
 const FLY59_A = 47.22;
 const FLY59_B = 47.75;
-const ROLL_A = 48.5;
-const ROLL_B = 49.15;
+const ROLL_A = 48.5; // travel to the new line
+const ROLL_B = 49.1;
+const ODO_A = 49.02; // "I got" has fully left by now
 const SCORE_END = 51.15; // = FLY6_B: gone once the camera has flown through its "6"
 const cubicIO = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const Digit: React.FC<{ from: string; to: string; r: number }> = ({ from, to, r }) => (
@@ -1003,8 +1004,8 @@ const Score: React.FC<{ t: number }> = ({ t }) => {
   const sc = Math.exp(lerp(Math.log(2.5), 0, m));
   const size = lerp(100, 96, mv);
   // odometer: the units roll first (9 -> 0) and carry into the tens (5 -> 6)
-  const units = prog(t, ROLL_A + 0.02, ROLL_A + 0.34, easeOutBack);
-  const tens = prog(t, ROLL_A + 0.14, ROLL_A + 0.5, easeOutBack);
+  const units = prog(t, ODO_A, ODO_A + 0.36, easeOutBack);
+  const tens = prog(t, ODO_A + 0.03, ODO_A + 0.39, easeOutBack);
   return (
     <span
       style={{
@@ -1062,7 +1063,7 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   const val = Math.min(59, Math.round(59 * (1 - (1 + x) * Math.exp(-x))));
   const done = val >= 59;
   const land = prog(t, 44.9, 45.4, easeOutBack);
-  const inP = prog(t, 43.2, 43.7, easeOutExpo);
+  const inP = prog(t, 43.28, 43.75, easeOutExpo);
   const out = prog(t, 47.22, 47.5, easeInExpo);
   const sub = prog(t, 44.95, 45.6, easeOutExpo);
   return (
@@ -1144,8 +1145,8 @@ const Foreground2: React.FC<{ t: number }> = ({ t }) => {
 };
 
 // fast moves rendered with real sub-frame motion blur (story time)
-const BLUR_WINDOWS: [number, number][] = [
-  [0, 0.8], [0.75, 1.45], [3.4, 4.8], [21.13, 21.95], [22.2, 22.9], [34.45, 35.7], [42.86, 43.4], [45.28, 46.6], [47.2, 47.8], [50.55, 51.9],
+const BLUR_WINDOWS: number[][] = [
+  [0, 0.8], [0.75, 1.45], [3.4, 4.8], [21.13, 21.95], [22.2, 22.9], [34.45, 35.7], [42.86, 43.4], [45.28, 46.6], [47.2, 47.8], [48.5, 49.45], [50.55, 51.2, 16], [51.2, 51.9],
 ];
 const V2Scene: React.FC = () => {
   const frame = useCurrentFrame();
@@ -1195,7 +1196,7 @@ const V2Scene: React.FC = () => {
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
         <Kinetic t={t} text="No pressure.|Just ~freedom.~" inAt={38.03} outAt={40.25} accent={ORANGE} y={TY} />
-        <Kinetic t={t} text="And that freedom made|me want it even *more.*" inAt={40.45} outAt={42.7} accent={ORANGE} y={TY} size={76} />
+        <Kinetic t={t} text="And that freedom made|me want it even *more.*" inAt={40.6} outAt={42.7} accent={ORANGE} y={TY} size={76} />
         <Result t={t} />
         <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} hideWord="59." />
         <Score t={t} />
@@ -1223,7 +1224,7 @@ export const V2: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: BG }}>
       <Audio src={staticFile("audio/mix-v2.wav")} />
-      <FilmBlur active={inWindows(t, BLUR_WINDOWS)}>
+      <FilmBlur samples={blurSamples(t, BLUR_WINDOWS)}>
         <V2Scene />
       </FilmBlur>
       <FilmLook />

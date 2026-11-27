@@ -586,9 +586,15 @@ export const RollWord: React.FC<{ t: number; text: string; inAt: number; outAt: 
 /* Children must read the time themselves (useCurrentFrame) so each     */
 /* sample sees its own sub-frame time.                                   */
 /* ------------------------------------------------------------------ */
-export const inWindows = (t: number, w: [number, number][]) => w.some(([a, b]) => t >= a && t <= b);
-export const FilmBlur: React.FC<{ active: boolean; samples?: number; children: React.ReactNode }> = ({ active, samples = 6, children }) => (
-  <CameraMotionBlur shutterAngle={180} samples={active ? samples : 1}>
+/** windows: [start, end, samples?] in story time; returns the sample count to use at t (1 = no blur) */
+export const blurSamples = (t: number, w: number[][]) => {
+  let n = 1;
+  for (const [a, b, k] of w) if (t >= a && t <= b) n = Math.max(n, k ?? 6);
+  return n;
+};
+// extreme zooms (fly-throughs) need many samples, or the blur breaks into stepped ghost copies
+export const FilmBlur: React.FC<{ samples: number; children: React.ReactNode }> = ({ samples, children }) => (
+  <CameraMotionBlur shutterAngle={180} samples={samples}>
     {children}
   </CameraMotionBlur>
 );
