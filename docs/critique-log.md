@@ -112,3 +112,16 @@ fits). The frames are now a continuous radial smear.
 
 **Final checks:** V1 1521 frames, V2 1620 frames, 1080×1920 at 30 fps; −16.0 LUFS integrated, true peak
 −5.8 / −5.3 dBFS; loop seams as close as a normal frame step. A full critique finds nothing left to fix.
+
+## Round 6 (fourth pass: chart dot → full stop, "patterns." wave grid, drift on holds)
+
+Critiqued the final files at a frame every 0.5 s plus 8 fps strips of each new moment.
+- V1 10.2–11.8 s: "patterns." rises letter by letter on a wave over thin design guides, flattens into the word at
+  10.95 s and hands over seamlessly to the Kinetic word at 11.6 s (identical position, no jump).
+- V2 26–35 s: the tip card now floats and breathes slightly (±7 px, ±0.45°); the dot→card morph lands on the
+  moving card.
+- V2 43.3–47.2 s: the 59/60 result slowly grows 4 % around its digits; the flyer starts from that scale.
+- V2 47.32–47.75 s: the head of the score line lifts off the chart, arcs down and lands exactly as the full stop
+  of "I got 59." (measured offset), then the circle draws.
+- No regressions elsewhere; 1521 / 1620 frames, −16.0 LUFS, true peak −5.8 / −5.3 dBFS, loop seams as close as
+  a normal frame step.
