@@ -56,3 +56,23 @@ at the QA render's full width.
 
 Checked and kept: level rail legibility and colours per chapter, viewfinder + "YOU" tag, callout leader
 lines, serif words in every line they appear in.
+
+## Round 3
+
+Full-film pass at a frame every 0.5 s for story and pacing, plus a sound-to-picture check: the audio of the
+QA renders was run through onset detection and every new cue (full-stop hop and bounce, landing swell,
+viewfinder hunt/lock, 59 flight, circle, odometer ticks, title-word ticks, wipe, pill, callout) has its
+onset within ±80 ms (≈2 frames) of its visual event.
+
+**What was weak**
+- V1 27.6–33.8 s: the camera was dead still for ~6 s while the pathway built (every other scene breathes).
+- Checked a suspicion of colour blotching from 16-sample blending in the fly-through and loop zoom
+  (6× saturation comparison of frames inside vs outside the blur windows): identical; the warm shading is the
+  existing light leaks and vignette. No change needed.
+
+**What changed**
+- A slow 3.5 % push-in over the pathway (27.6 → 33.8 s) that hands straight into the existing push before
+  the drop.
+
+Verified from round 2: "BEST FRIEND" now settles from above the pill; the circle sits clear of "got"; the 40.7 s
+line swap is clean.
