@@ -1,6 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
-import { MONO, SANS } from "./fonts";
+import { CameraMotionBlur } from "@remotion/motion-blur";
+import { MONO, SANS, SERIF } from "./fonts";
 import { clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
 
 /* icons for inline chips in Kinetic text ("[wave]" etc.), 24x24 stroke paths */
@@ -70,8 +71,10 @@ export const Kinetic: React.FC<{
         // mask: each line hides its words below a clean baseline (padding keeps descenders + glow unclipped)
         <div key={li} style={{ whiteSpace: "nowrap", overflow: "hidden", padding: "0.06em 0.3em 0.16em", margin: "-0.06em 0 -0.16em" }}>
           {line.split(" ").map((raw, wi, arr) => {
-            const isAccent = raw.startsWith("*");
-            const word = raw.replace(/\*/g, "");
+            // "*word*" = accent colour; "~word~" = accent colour set in serif italic (one feeling word per line)
+            const isSerif = raw.startsWith("~");
+            const isAccent = raw.startsWith("*") || isSerif;
+            const word = raw.replace(/[*~]/g, "");
             const i = idx++;
             const mid = (arr.length - 1) / 2;
             const start =
@@ -154,6 +157,7 @@ export const Kinetic: React.FC<{
                   transform: `translateY(${ty}px)${streakTf}`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
                   color: isAccent ? accent : mode === "streak" && p < 1 ? mixColor("#E9A93B", color.startsWith("#") ? color : INK, p) : undefined,
+                  ...(isSerif ? { fontFamily: SERIF, fontStyle: "italic", fontWeight: 400, fontSize: "1.2em", letterSpacing: "-0.01em", lineHeight: 0.9, paddingRight: "0.06em" } : {}),
                   textShadow: `0 10px 30px rgba(80,55,25,${0.1 * op})`,
                   backgroundImage: isAccent
                     ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, ${hi} ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
@@ -574,3 +578,17 @@ export const RollWord: React.FC<{ t: number; text: string; inAt: number; outAt: 
     </span>
   );
 };
+
+/* ------------------------------------------------------------------ */
+/* FilmBlur: real camera motion blur (several sub-frame samples blended, */
+/* 180° shutter) inside fast-motion windows; a single sample elsewhere,  */
+/* so the component tree stays the same on every frame.                 */
+/* Children must read the time themselves (useCurrentFrame) so each     */
+/* sample sees its own sub-frame time.                                   */
+/* ------------------------------------------------------------------ */
+export const inWindows = (t: number, w: [number, number][]) => w.some(([a, b]) => t >= a && t <= b);
+export const FilmBlur: React.FC<{ active: boolean; samples?: number; children: React.ReactNode }> = ({ active, samples = 6, children }) => (
+  <CameraMotionBlur shutterAngle={180} samples={active ? samples : 1}>
+    {children}
+  </CameraMotionBlur>
+);

@@ -5,8 +5,8 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Cursor, Decode, Flash, FilmLook, GiantWord, INK, Kinetic, LightStreak, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags } from "../premium/components";
-import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
+import { Ambience, Cursor, Decode, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, LightStreak, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, inWindows } from "../premium/components";
+import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
 
@@ -447,6 +447,54 @@ const ChapterSweep: React.FC<{ t: number }> = ({ t }) => (
   </AbsoluteFill>
 );
 
+/* game-style level rail: the 8 chapters as one progress bar (widths = chapter lengths), a playhead runs along it */
+const RAIL = { x0: 80, x1: 1000, y: 168 };
+const RAIL_END = 51.15;
+const LevelRail: React.FC<{ t: number }> = ({ t }) => {
+  if (t < 4.6 || t > 51.3) return null;
+  const T0 = CHAPTERS[0][0];
+  const span = RAIL_END - T0;
+  const W = RAIL.x1 - RAIL.x0;
+  const GAP = 8;
+  const X = (tt: number) => RAIL.x0 + clamp((tt - T0) / span) * W;
+  const draw = prog(t, 4.6, 5.4, easeInOut);
+  const out = prog(t, 50.8, 51.2);
+  const idx = chapterIdx(t);
+  const ph = X(t);
+  const y = RAIL.y;
+  const ticks: React.ReactNode[] = [];
+  for (let x = RAIL.x0; x <= RAIL.x1 + 0.1; x += 20) ticks.push(<line key={x} x1={x} x2={x} y1={y - 24} y2={y - 17} stroke={INK} strokeOpacity={0.16} strokeWidth={1.5} />);
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible", opacity: 1 - out }}>
+      <defs>
+        <clipPath id="railClip">
+          <rect x={RAIL.x0 - 20} y={y - 60} width={(W + 40) * draw} height={100} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#railClip)">
+        {ticks}
+        {CHAPTERS.map(([a], i) => {
+          const b = i < CHAPTERS.length - 1 ? CHAPTERS[i + 1][0] : RAIL_END;
+          const xa = X(a) + (i ? GAP / 2 : 0);
+          const xb = X(b) - (i < CHAPTERS.length - 1 ? GAP / 2 : 0);
+          const fillTo = i < idx ? xb : i === idx ? Math.min(xb, Math.max(xa, ph)) : xa;
+          const pulse = i === idx ? Math.exp(-(t - a) * 3) : 0;
+          return (
+            <g key={i}>
+              <line x1={xa} x2={xa} y1={y - 28} y2={y - 14} stroke={INK} strokeOpacity={0.3} strokeWidth={2} />
+              <rect x={xa} y={y - 4} width={Math.max(0, xb - xa)} height={8} rx={4} fill={INK} fillOpacity={0.08} />
+              {fillTo > xa + 0.5 && <rect x={xa} y={y - 4} width={fillTo - xa} height={8} rx={4} fill={CH_COL[i]} fillOpacity={i === idx ? 1 : 0.75} />}
+              {pulse > 0.02 && <rect x={xa - 4} y={y - 8} width={xb - xa + 8} height={16} rx={8} fill="none" stroke={CH_COL[i]} strokeOpacity={0.5 * pulse} strokeWidth={2} />}
+            </g>
+          );
+        })}
+        <line x1={ph} x2={ph} y1={y - 30} y2={y + 12} stroke={CH_COL[idx]} strokeWidth={2} />
+        <circle cx={ph} cy={y - 34} r={7} fill="#FFFFFF" stroke={CH_COL[idx]} strokeWidth={3} />
+      </g>
+    </svg>
+  );
+};
+
 const ChapterLabel: React.FC<{ t: number }> = ({ t }) => {
   if (t < 4.6 || t > 51.2) return null;
   let idx = 0;
@@ -506,15 +554,15 @@ const ThoughtCloud: React.FC<{ t: number }> = ({ t }) => {
       {THOUGHTS.map((w, i) => {
         const top = i % 5 < 2;
         const k = top ? Math.floor(i / 5) * 2 + (i % 5) : i - Math.floor(i / 5) * 2 - Math.min(2, i % 5); // index within its zone
-        const bx = top ? 700 + (k % 2) * 200 + (rand(i * 1.9) - 0.5) * 80 : 130 + ((k * 3) % 11) * 82 + (rand(i * 1.9) - 0.5) * 40;
-        const by = top ? 170 + (k / 7) * 330 + (rand(i * 2.7) - 0.5) * 40 : 950 + (k % 3) * 85 + (rand(i * 2.7) - 0.5) * 30;
+        const bx = top ? 790 + (k % 2) * 160 + (rand(i * 1.9) - 0.5) * 50 : 130 + ((k * 3) % 11) * 82 + (rand(i * 1.9) - 0.5) * 40;
+        const by = top ? 330 + (k / 7) * 240 + (rand(i * 2.7) - 0.5) * 40 : 950 + (k % 3) * 85 + (rand(i * 2.7) - 0.5) * 30;
         const d = rand(i * 4.3) * 0.7 + (t - CLOUD_A) * 0.17;
         if (d > 1.05) return null;
         const sc = lerp(0.5, 1.55, d);
         const blur = Math.min(9, Math.abs(d - 0.5) * 14);
         const op = clamp(d / 0.18) * (1 - clamp((d - 0.85) / 0.2));
         const x = bx + (bx - 540) * 0.3 * d;
-        const y = by + (top ? (by - 760) * 0.25 * d : 0);
+        const y = by + (top ? (by - 760) * 0.15 * d : 0);
         const kind = i % 3;
         return (
           <div
@@ -927,6 +975,86 @@ const PressStart: React.FC<{ t: number }> = ({ t }) => {
 /* the clicked HUD turns into a tilted glass panel before the camera dives into the chart */
 const hudGlass = (t: number) => prog(t, START_CLICK + 0.02, START_CLICK + 0.35, easeOutExpo);
 
+/* One number carries the ending (transforms instead of fades):
+   the result's "59" flies + shrinks into its slot in "I got 59.", then rolls like an odometer to "60." while it
+   slides into its slot in "Now you go / get the 60." and stays there (the camera later flies through its "6").
+   Measured (Inter 800, -0.035em): "59." span centre 653.3, 1335 at 100px; "60." span centre 708.6, 1390.7 at 96px;
+   the result's digits centre 439.8, 1320 at 250px -> flyer centre incl. "." 473.6. */
+const FLY59_A = 47.22;
+const FLY59_B = 47.75;
+const ROLL_A = 48.5;
+const ROLL_B = 49.15;
+const SCORE_END = 51.15; // = FLY6_B: gone once the camera has flown through its "6"
+const cubicIO = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const Digit: React.FC<{ from: string; to: string; r: number }> = ({ from, to, r }) => (
+  <span style={{ display: "inline-block", height: "1.1em", overflow: "hidden", verticalAlign: "top" }}>
+    <span style={{ display: "block", transform: `translateY(${-r * 1.1}em)` }}>
+      <span style={{ display: "block", height: "1.1em", filter: r > 0.02 && r < 0.98 ? `blur(${Math.sin(Math.PI * r) * 3}px)` : undefined }}>{from}</span>
+      <span style={{ display: "block", height: "1.1em", filter: r > 0.02 && r < 0.98 ? `blur(${Math.sin(Math.PI * r) * 3}px)` : undefined }}>{to}</span>
+    </span>
+  </span>
+);
+const Score: React.FC<{ t: number }> = ({ t }) => {
+  if (t < FLY59_A || t >= SCORE_END) return null;
+  const m = cubicIO(clamp((t - FLY59_A) / (FLY59_B - FLY59_A)));
+  const mv = cubicIO(clamp((t - ROLL_A) / (ROLL_B - ROLL_A)));
+  const x = lerp(lerp(473.6, 653.3, m), 708.6, mv);
+  const y = lerp(lerp(1320, 1335, m), 1390.7, mv);
+  const sc = Math.exp(lerp(Math.log(2.5), 0, m));
+  const size = lerp(100, 96, mv);
+  // odometer: the units roll first (9 -> 0) and carry into the tens (5 -> 6)
+  const units = prog(t, ROLL_A + 0.02, ROLL_A + 0.34, easeOutBack);
+  const tens = prog(t, ROLL_A + 0.14, ROLL_A + 0.5, easeOutBack);
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: `translate(-50%, -50%) scale(${sc})`,
+        fontFamily: SANS,
+        fontWeight: 800,
+        fontSize: size,
+        letterSpacing: "-0.035em",
+        lineHeight: 1.1,
+        whiteSpace: "nowrap",
+        color: YELLOW,
+        textShadow: "0 10px 30px rgba(80,55,25,0.1)",
+        // the full stop wipes in as the number lands in the sentence
+        clipPath: `inset(-30% ${(1 - m) * 27}px -30% -30%)`,
+      }}
+    >
+      <Digit from="5" to="6" r={tens} />
+      <Digit from="9" to="0" r={units} />.
+    </span>
+  );
+};
+const CIRCLE59 = (() => {
+  const pts: string[] = [];
+  const N = 90;
+  const th0 = -2.5;
+  for (let i = 0; i <= N; i++) {
+    const u = i / N;
+    const th = th0 + u * Math.PI * 2 * 1.13;
+    const k = 1 + 0.04 * Math.sin(3 * th + 1) + 0.05 * u;
+    const ex = Math.cos(th) * 96 * k;
+    const ey = Math.sin(th) * 66 * k;
+    const a = (-5 * Math.PI) / 180;
+    pts.push(`${i ? "L" : "M"}${(658 + ex * Math.cos(a) - ey * Math.sin(a)).toFixed(1)},${(1333 + ex * Math.sin(a) + ey * Math.cos(a)).toFixed(1)}`);
+  }
+  return pts.join(" ");
+})();
+const Circle59: React.FC<{ t: number }> = ({ t }) => {
+  if (t < 47.78 || t > 48.75) return null;
+  const d = prog(t, 47.78, 48.1, easeOut);
+  const o = 1 - prog(t, 48.42, 48.62, easeInOut);
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible", opacity: o }}>
+      <path d={CIRCLE59} fill="none" stroke={YELLOW} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={`${d} 1`} />
+    </svg>
+  );
+};
+
 const Result: React.FC<{ t: number }> = ({ t }) => {
   if (t < 43.2 || t > 47.55) return null;
   // critically damped count from 0 (motion-charts: no overshoot, no invented start value)
@@ -940,7 +1068,7 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined }}>
       <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1 }}>
-        <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? "0 18px 40px rgba(80,55,25,0.12)" : undefined }}>{val}</span>
+        <span style={{ opacity: t >= FLY59_A ? 0 : 1, fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? "0 18px 40px rgba(80,55,25,0.12)" : undefined }}>{val}</span>
         <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
       </div>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 20 }}>
@@ -1015,7 +1143,11 @@ const Foreground2: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
-export const V2: React.FC = () => {
+// fast moves rendered with real sub-frame motion blur (story time)
+const BLUR_WINDOWS: [number, number][] = [
+  [0, 0.8], [0.75, 1.45], [3.4, 4.8], [21.13, 21.95], [22.2, 22.9], [34.45, 35.7], [42.86, 43.4], [45.28, 46.6], [47.2, 47.8], [50.55, 51.9],
+];
+const V2Scene: React.FC = () => {
   const frame = useCurrentFrame();
   // beat-synced story clock (see scripts/audio/beatalign.py)
   const t = warpT(frame / FPS);
@@ -1027,7 +1159,6 @@ export const V2: React.FC = () => {
   const sy = shake * (rand(frame + 3) - 0.5);
   return (
     <AbsoluteFill style={{ background: BG }}>
-      <Audio src={staticFile("audio/mix-v2.wav")} />
       {/* room light */}
       <AbsoluteFill style={{ background: `radial-gradient(110% 70% at 60% 38%, ${tint} 0%, ${BG} 62%)` }} />
       <Orb x={760 + Math.sin((t / 54) * Math.PI * 2) * 120} y={700} r={700} color={`${tint}`} opacity={0.9} />
@@ -1041,6 +1172,7 @@ export const V2: React.FC = () => {
         <IntroHUD t={t} />
         <ChapterSweep t={t} />
         <ChapterLabel t={t} />
+        <LevelRail t={t} />
         <ThoughtCloud t={t} />
         <Terminal t={t} />
       </AbsoluteFill>
@@ -1053,20 +1185,22 @@ export const V2: React.FC = () => {
         <Kinetic t={t} text="Maths always|came easy to me." inAt={4.6} outAt={6.4} accent={YELLOW} y={TY} />
         <Kinetic t={t} text="But talent alone|doesn't get you an *award.*" inAt={6.64} outAt={8.95} accent={YELLOW} y={TY} size={76} />
         <Kinetic t={t} text="I spent more time|[pad] *gaming* than studying." inAt={9.3} outAt={13.6} accent={RED} y={TY} size={74} />
-        <Kinetic t={t} text="Then asthma|hit me [pulse] *hard.*" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
+        <Kinetic t={t} text="Then asthma|hit me [pulse] ~hard.~" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
         <Kinetic t={t} text="I had to|slow down." inAt={17.25} outAt={20.6} accent={RED} y={TY} mode="focus" />
         <MorphBubble t={t} s={s} />
         <LightStreak t={t} at={22.22} y={TY - 44} />
         <Kinetic t={t} text="So I came back." inAt={22.3} outAt={25.25} accent={GREEN} y={TY - 46.2} mode="streak" />
-        <Kinetic t={t} text="With [spark] *confidence.*" inAt={22.39} outAt={25.3} accent={GREEN} y={TY + 46.2} />
+        <Kinetic t={t} text="With [spark] ~confidence.~" inAt={22.39} outAt={25.3} accent={GREEN} y={TY + 46.2} />
         <TipCard t={t} sceneS={s} />
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
-        <Kinetic t={t} text="No pressure.|Just *freedom.*" inAt={38.03} outAt={40.25} accent={ORANGE} y={TY} />
+        <Kinetic t={t} text="No pressure.|Just ~freedom.~" inAt={38.03} outAt={40.25} accent={ORANGE} y={TY} />
         <Kinetic t={t} text="And that freedom made|me want it even *more.*" inAt={40.45} outAt={42.7} accent={ORANGE} y={TY} size={76} />
         <Result t={t} />
-        <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} />
-        {t < FLY6_B && <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={99} accent={YELLOW} y={TY} size={96} weight={800} />}
+        <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} hideWord="59." />
+        <Score t={t} />
+        <Circle59 t={t} />
+        {t < FLY6_B && <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={99} accent={YELLOW} y={TY} size={96} weight={800} hideWord="60." />}
         {t < FLY6_B && <SelectBox t={t} at={49.75} until={51.3} x={633.25} y={1337.88} w={150.75} h={105.59} color={YELLOW} />}
       </AbsoluteFill>
       </AbsoluteFill>
@@ -1080,6 +1214,18 @@ export const V2: React.FC = () => {
       <Flash t={t} at={HUD_HIT} color={RED} peak={0.14} dur={0.5} />
       <Flash t={t} at={4.23} color="#FFFFFF" peak={0.5} dur={0.6} />
       <Flash t={t} at={42.86} color="#FFFFFF" peak={0.4} dur={0.6} />
+    </AbsoluteFill>
+  );
+};
+
+export const V2: React.FC = () => {
+  const t = warpT(useCurrentFrame() / FPS);
+  return (
+    <AbsoluteFill style={{ background: BG }}>
+      <Audio src={staticFile("audio/mix-v2.wav")} />
+      <FilmBlur active={inWindows(t, BLUR_WINDOWS)}>
+        <V2Scene />
+      </FilmBlur>
       <FilmLook />
     </AbsoluteFill>
   );

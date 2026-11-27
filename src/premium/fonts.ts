@@ -13,6 +13,9 @@ const faces: [string, string, string][] = [
 for (const [family, weight, file] of faces) {
   loadFont({ family, weight, url: staticFile(`fonts/${file}`), format: "woff2" });
 }
+// serif italic for single "feeling" words (SIL OFL, see public/fonts/InstrumentSerif-OFL.txt)
+loadFont({ family: "Instrument Serif", weight: "400", style: "italic", url: staticFile("fonts/instrument-serif-latin-400-italic.woff2"), format: "woff2" });
 
 export const SANS = "Inter, sans-serif";
 export const MONO = "'JetBrains Mono', monospace";
+export const SERIF = "'Instrument Serif', serif";

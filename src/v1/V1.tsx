@@ -4,8 +4,8 @@ import "../premium/fonts";
 import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
-import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Cursor, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags } from "../premium/components";
+import { MONO, SANS, SERIF } from "../premium/fonts";
+import { Ambience, Cursor, Flash, FilmBlur, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags, inWindows } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
@@ -629,7 +629,7 @@ const PhoneCorridor: React.FC<{ t: number }> = ({ t }) => {
 const PHRASES: [string, number, number][] = [
   ["One question.", 536.45, 4.35],
   ["One answer.", 480.03, 6.04],
-  ["One more *try.*", 520.67, 7.25],
+  ["One more ~try.~", 524.41, 7.25],
 ];
 const PH_GAP = 30;
 // the full stop of "try." breaks off (DOT_A), the words fall away, it bounces once and flies
@@ -637,7 +637,7 @@ const PH_GAP = 30;
 const DOT_A = 8.75;
 const DOT_B = 9.55;
 const FALL_A = 8.86;
-const PER0 = { x: 279.67 + 509.5, y: TY - 46 + 70 }; // measured ink centre of "." (Inter 700 84px), slide settled
+const PER0 = { x: CX - 524.41 / 2 + 504.5, y: TY - 46 + 74.5 }; // measured ink centre of the serif-italic "." (slide settled)
 const DOT_FLOOR = 90;
 const DOT_V0 = -520;
 const DOT_G = 5200;
@@ -661,7 +661,7 @@ const camToLayer = (p: { x: number; y: number }, t: number) => {
 const dotPos = (t: number) => {
   if (t < DOT_LAND) {
     const tau = Math.max(0, t - DOT_A);
-    return { x: PER0.x + tau * 60, y: PER0.y + DOT_V0 * tau + 0.5 * DOT_G * tau * tau, r: 6.5 };
+    return { x: PER0.x + tau * 60, y: PER0.y + DOT_V0 * tau + 0.5 * DOT_G * tau * tau, r: 5.5 };
   }
   const b0 = { x: PER0.x + (DOT_LAND - DOT_A) * 60, y: PER0.y + DOT_FLOOR };
   const tg = camToLayer(penHead(t), t);
@@ -669,7 +669,7 @@ const dotPos = (t: number) => {
   const c = { x: (b0.x + tg.x) / 2 + 40, y: Math.min(b0.y, tg.y) - 300 };
   const x = (1 - u) ** 2 * b0.x + 2 * (1 - u) * u * c.x + u * u * tg.x;
   const y = (1 - u) ** 2 * b0.y + 2 * (1 - u) * u * c.y + u * u * tg.y;
-  return { x, y, r: lerp(6.5, 11 * camScale(t), u) };
+  return { x, y, r: lerp(5.5, 11 * camScale(t), u) };
 };
 const FlyingStop: React.FC<{ t: number }> = ({ t }) => {
   if (t < DOT_A || t >= DOT_B) return null;
@@ -732,10 +732,11 @@ const SlidingLine: React.FC<{ t: number }> = ({ t }) => {
               const fall = 0.5 * 4200 * tau * tau;
               const rot = tau * (j % 2 ? 26 : -18);
               const fo = 1 - prog(t, fs + 0.18, fs + 0.5);
-              const word = w.replace(/\*/g, "");
+              const word = w.replace(/[*~]/g, "");
               const lastWord = isLast && j === arr.length - 1;
+              const serif = w.startsWith("~");
               return (
-                <span key={j} style={{ display: "inline-block", whiteSpace: "pre", color: w.startsWith("*") ? BLUE : undefined, transform: `translateY(${fall}px) rotate(${rot}deg)`, opacity: fo }}>
+                <span key={j} style={{ display: "inline-block", whiteSpace: "pre", color: w.startsWith("*") || serif ? BLUE : undefined, transform: `translateY(${fall}px) rotate(${rot}deg)`, opacity: fo, ...(serif ? { fontFamily: SERIF, fontStyle: "italic", fontWeight: 400, fontSize: "1.2em", letterSpacing: "-0.01em", lineHeight: 0.9, paddingRight: "0.06em" } : {}) }}>
                   {lastWord ? word.slice(0, -1) : word}
                   {lastWord && <span style={{ opacity: t < DOT_A ? 1 : 0 }}>.</span>}
                   {j < arr.length - 1 ? " " : ""}
@@ -1032,6 +1033,48 @@ const LearnersField: React.FC<{ t: number }> = ({ t }) => {
   return (
     <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, opacity: op }}>
       {dots}
+    </svg>
+  );
+};
+
+/* viewfinder: corner brackets hunt across the crowd, then lock onto your dot ("I'm one of them") */
+const FOCUS_A = 41.1;
+const FOCUS_LOCK = 41.75;
+const FOCUS_OUT = 43.15;
+const FocusBrackets: React.FC<{ t: number }> = ({ t }) => {
+  if (t < FOCUS_A || t > FOCUS_OUT + 0.35) return null;
+  const o = dotOrigin(t);
+  // two wrong guesses, then the lock (offsets from your dot, in crowd units)
+  const hunt: [number, number, number][] = [
+    [FOCUS_A, 170, -140],
+    [FOCUS_A + 0.3, -120, 95],
+    [FOCUS_LOCK - 0.12, 0, 0],
+  ];
+  let ox = hunt[0][1];
+  let oy = hunt[0][2];
+  for (let i = 1; i < hunt.length; i++) {
+    const k = prog(t, hunt[i][0] - 0.16, hunt[i][0], easeInOut);
+    ox = lerp(ox, hunt[i][1], k);
+    oy = lerp(oy, hunt[i][2], k);
+  }
+  const fs = crowdScale(t);
+  const cx = o.x + ox * fs;
+  const cy = o.y + oy * fs;
+  const lock = prog(t, FOCUS_LOCK - 0.1, FOCUS_LOCK + 0.25, easeOutBack);
+  const half = lerp(82, 56, lock) + (1 - prog(t, FOCUS_A, FOCUS_A + 0.25, easeOutExpo)) * 140;
+  const op = prog(t, FOCUS_A, FOCUS_A + 0.15) * (1 - prog(t, FOCUS_OUT, FOCUS_OUT + 0.3, easeInOut));
+  const L = 26;
+  const col = lock > 0.5 ? BLUE : INK;
+  const corner = (sx: number, sy: number) => `M${cx + sx * half},${cy + sy * (half - L)} L${cx + sx * half},${cy + sy * half} L${cx + sx * (half - L)},${cy + sy * half}`;
+  const tag = prog(t, FOCUS_LOCK + 0.05, FOCUS_LOCK + 0.4, easeOutExpo);
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible", opacity: op }}>
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy], i) => (
+        <path key={i} d={corner(sx, sy)} fill="none" stroke={col} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" />
+      ))}
+      <text x={cx + half + 16} y={cy - half + 10} fontFamily="JetBrains Mono" fontWeight={500} fontSize={34} letterSpacing={4} fill={BLUE} opacity={tag}>
+        YOU
+      </text>
     </svg>
   );
 };
@@ -1344,13 +1387,16 @@ const Foreground: React.FC<{ t: number }> = ({ t }) => {
 };
 
 /* ================================================================== */
-export const V1: React.FC = () => {
+// fast moves rendered with real sub-frame motion blur (story time)
+const BLUR_WINDOWS: [number, number][] = [
+  [0, 0.7], [1.15, 1.95], [8.75, 9.7], [14.3, 15.9], [23.9, 27.6], [32.7, 33.6], [35.2, 36.7], [39.9, 41.0], [47.7, 48.5], [49.6, 50.7],
+];
+const V1Scene: React.FC = () => {
   const frame = useCurrentFrame();
   // beat-synced story clock (see scripts/audio/beatalign.py)
   const t = warpT(frame / FPS);
   return (
     <AbsoluteFill style={{ background: BG }}>
-      <Audio src={staticFile("audio/mix-v1.wav")} />
       <Backdrop t={t} />
       <Ambience t={t} tint={BLUE} />
       <Camera t={t}>
@@ -1364,6 +1410,7 @@ export const V1: React.FC = () => {
         <Counter t={t} />
         <Formation t={t} />
         <Ending t={t} />
+        <FocusBrackets t={t} />
         <Sparkles t={t} at={38.4} x={880} y={CY - 50} color={BLUE} n={10} spread={170} seed={4} />
       </Camera>
       <Foreground t={t} />
@@ -1381,10 +1428,22 @@ export const V1: React.FC = () => {
         <Reel t={t} />
         <SelectBox t={t} at={33.7} until={35.1} x={432.48} y={1348.91} w={410.33} h={79.19} color={BLUE} />
         <Kinetic t={t} text="This year,|I'm *one of them.*" inAt={41.06} outAt={43.2} accent={BLUE} y={1010} />
-        <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
-        <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
+        <Kinetic t={t} text="Your dot|is ~waiting.~" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
+        <Kinetic t={t} text="Start small.|Keep ~going.~" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
       </AbsoluteFill>
       <Flash t={t} at={DROP} color="#FFFFFF" peak={0.45} dur={0.6} />
+    </AbsoluteFill>
+  );
+};
+
+export const V1: React.FC = () => {
+  const t = warpT(useCurrentFrame() / FPS);
+  return (
+    <AbsoluteFill style={{ background: BG }}>
+      <Audio src={staticFile("audio/mix-v1.wav")} />
+      <FilmBlur active={inWindows(t, BLUR_WINDOWS)}>
+        <V1Scene />
+      </FilmBlur>
       <FilmLook />
     </AbsoluteFill>
   );
