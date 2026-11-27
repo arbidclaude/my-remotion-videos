@@ -1,7 +1,17 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
 import { MONO, SANS } from "./fonts";
-import { clamp, easeInExpo, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
+import { clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
+
+/* icons for inline chips in Kinetic text ("[wave]" etc.), 24x24 stroke paths */
+export const CHIP_ICONS: Record<string, string> = {
+  wave: "M2 12c2.5-6 5-6 7.5 0s5 6 7.5 0 3.5-4 5-2",
+  code: "M8 7l-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16",
+  phone: "M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2",
+  pad: "M6 8h12a4 4 0 0 1 4 4v3a3 3 0 0 1-5.4 1.8L15 15H9l-1.6 1.8A3 3 0 0 1 2 15v-3a4 4 0 0 1 4-4z M7 11v3 M5.5 12.5h3 M16 12h.01 M18 13.5h.01",
+  pulse: "M2 12h4l2-5 4 10 2-5h8",
+  spark: "M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z",
+};
 
 /* Warm-white "paper" theme shared by both films */
 export const PAPER = "#FBF7F0";
@@ -70,6 +80,34 @@ export const Kinetic: React.FC<{
             const blur = (1 - p) * 5 + e * 4;
             const sweep = prog(t, start + 0.35, start + 1.3, easeOutExpo);
             void i;
+            const chip = /^\[(\w+)\]$/.exec(raw);
+            if (chip) {
+              const pop = prog(t, start, start + 0.55, easeOutBack);
+              return (
+                <span
+                  key={wi}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "1.08em",
+                    height: "0.8em",
+                    marginRight: wi === arr.length - 1 ? 0 : "0.24em",
+                    verticalAlign: "-0.08em",
+                    borderRadius: "0.24em",
+                    background: `${accent}1F`,
+                    border: `2px solid ${accent}55`,
+                    opacity: op,
+                    transform: `translateY(${ty}px) scale(${lerp(0.6, 1, pop)})`,
+                    filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
+                  }}
+                >
+                  <svg width="0.56em" height="0.56em" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d={CHIP_ICONS[chip[1]] ?? ""} />
+                  </svg>
+                </span>
+              );
+            }
             if (chars) {
               const lineOffset = arr.slice(0, wi).join(" ").replace(/\*/g, "").length + (wi ? 1 : 0);
               return (
@@ -346,5 +384,61 @@ export const GiantWord: React.FC<{
     >
       {word}
     </span>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* SelectBox: a design-tool selection (dashed box + corner handles)     */
+/* that draws on around a word. x/y/w/h = the word's box on screen.     */
+/* ------------------------------------------------------------------ */
+export const SelectBox: React.FC<{ t: number; at: number; until: number; x: number; y: number; w: number; h: number; color: string; pad?: number }> = ({ t, at, until, x, y, w, h, color, pad = 14 }) => {
+  if (t < at || t > until + 0.4) return null;
+  const draw = prog(t, at, at + 0.5, easeInOut);
+  const hp = prog(t, at + 0.35, at + 0.7, easeOutBack);
+  const out = prog(t, until, until + 0.35, easeInExpo);
+  const X = x - pad;
+  const Y = y - pad;
+  const W = w + pad * 2;
+  const Hh = h + pad * 2;
+  const per = 2 * (W + Hh);
+  const hs = 14 * hp;
+  return (
+    <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible", opacity: 1 - out }}>
+      <rect x={X} y={Y} width={W} height={Hh} rx={6} fill={`${color}10`} fillOpacity={draw} stroke={color} strokeWidth={3} strokeDasharray={`${per * draw} ${per}`} />
+      <rect x={X} y={Y} width={W} height={Hh} rx={6} fill="none" stroke={color} strokeOpacity={0.35 * draw} strokeWidth={1.5} strokeDasharray="8 7" />
+      {[
+        [X, Y],
+        [X + W, Y],
+        [X, Y + Hh],
+        [X + W, Y + Hh],
+      ].map(([cx, cy], i) => (
+        <rect key={i} x={cx - hs / 2} y={cy - hs / 2} width={hs} height={hs} rx={2} fill="#FFFFFF" stroke={color} strokeWidth={2.5} />
+      ))}
+    </svg>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Cursor: an arrow pointer with a click (press + ripple)               */
+/* (x, y) is the pointer tip. All motion is driven by the caller.       */
+/* ------------------------------------------------------------------ */
+export const Cursor: React.FC<{ t: number; x: number; y: number; clickAt: number; opacity: number; scale?: number }> = ({ t, x, y, clickAt, opacity, scale = 1 }) => {
+  if (opacity <= 0.01) return null;
+  const press = t > clickAt && t < clickAt + 0.25 ? Math.sin(Math.PI * ((t - clickAt) / 0.25)) : 0;
+  const rp = prog(t, clickAt, clickAt + 0.6, easeOutExpo);
+  return (
+    <>
+      {t > clickAt && t < clickAt + 0.6 && (
+        <div style={{ position: "absolute", left: x - 10 - rp * 40, top: y - 10 - rp * 40, width: 20 + rp * 80, height: 20 + rp * 80, borderRadius: "50%", border: `3px solid ${INK}`, opacity: (1 - rp) * 0.5 * opacity }} />
+      )}
+      <svg
+        width={44}
+        height={56}
+        viewBox="0 0 22 28"
+        style={{ position: "absolute", left: x - 3, top: y - 2, opacity, transform: `scale(${scale * (1 - press * 0.16)})`, transformOrigin: "3px 2px", filter: "drop-shadow(0 6px 10px rgba(60,40,20,0.3))", overflow: "visible" }}
+      >
+        <path d="M2 1 L2 21 L7.5 16 L11 24.5 L14.5 23 L11 14.8 L18.5 14.8 Z" fill={INK} stroke="#FFFFFF" strokeWidth={1.6} strokeLinejoin="round" />
+      </svg>
+    </>
   );
 };

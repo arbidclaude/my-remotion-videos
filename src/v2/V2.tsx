@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Decode, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
+import { Ambience, Cursor, Decode, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, SelectBox, Sparkles } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
@@ -407,6 +407,31 @@ const chapterIdx = (t: number) => {
   return idx;
 };
 
+/* soft band of the chapter's colour sweeps across as the mood changes */
+const ChapterSweep: React.FC<{ t: number }> = ({ t }) => (
+  <AbsoluteFill style={{ pointerEvents: "none", overflow: "hidden" }}>
+    {CHAPTERS.map(([at], i) => {
+      if (i === 0 || t < at || t > at + 1.0) return null;
+      const p = easeInOut(clamp((t - at) / 1.0));
+      return (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: lerp(-700, 1500, p),
+            top: -300,
+            width: 520,
+            height: 2600,
+            transform: "rotate(18deg)",
+            background: `linear-gradient(90deg, transparent, ${CH_COL[i]}24, transparent)`,
+            opacity: Math.sin(Math.PI * p),
+          }}
+        />
+      );
+    })}
+  </AbsoluteFill>
+);
+
 const ChapterLabel: React.FC<{ t: number }> = ({ t }) => {
   if (t < 4.6 || t > 51.2) return null;
   let idx = 0;
@@ -496,6 +521,63 @@ const Icon: React.FC<{ kind: string; color: string }> = ({ kind, color }) => {
 };
 
 const CARD = { left: 60, top: TY - 125, w: 960, h: 230 };
+const FAN_A = 34.45;
+const FAN_OUT = 35.3;
+const TipFan: React.FC<{ t: number }> = ({ t }) => {
+  if (t < FAN_A || t > 35.65) return null;
+  const pose = [
+    [-300, 40, -13, 14],
+    [-100, 6, -4, 5],
+    [100, 6, 4, -5],
+    [300, 40, 13, -14],
+  ];
+  const out = prog(t, FAN_OUT, 35.6, easeInExpo);
+  return (
+    <AbsoluteFill style={{ perspective: 1200, perspectiveOrigin: `540px ${TY}px` }}>
+      {TIPS.map(([, , lab, txt, c, icon], i) => {
+        const p = prog(t, FAN_A + i * 0.05, FAN_A + 0.55 + i * 0.05, easeOutBack);
+        const [px, py, rz, ry] = pose[i];
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: 540 - 190,
+              top: TY - 80,
+              width: 380,
+              height: 170,
+              borderRadius: 28,
+              background: "linear-gradient(180deg, #FFFFFF, #FCF8F2)",
+              border: `1.5px solid ${c === YELLOW ? "rgba(227,160,8,0.4)" : "rgba(60,45,30,0.1)"}`,
+              boxShadow: "0 30px 60px rgba(90,60,25,0.18)",
+              transform: `translate(${px * p}px, ${py * p - out * 160}px) rotateZ(${rz * p}deg) rotateY(${ry * p}deg) rotateX(${8 * p}deg) scale(${lerp(0.9, 1, p)})`,
+              opacity: clamp(p * 2) * (1 - out),
+              filter: out > 0.05 ? `blur(${out * 10}px)` : undefined,
+              padding: "22px 24px",
+              display: "flex",
+              gap: 16,
+              alignItems: "center",
+            }}
+          >
+            <div style={{ width: 64, height: 64, borderRadius: 18, background: `${c}1F`, border: `1.5px solid ${c}55`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ transform: "scale(0.75)" }}>
+                <Icon kind={icon} color={c} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: MONO, fontSize: 18, letterSpacing: 2, color: c, marginBottom: 4 }}>{lab}</div>
+              <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 22, lineHeight: 1.2, color: WHITE }}>
+                {txt.split("|").map((l, k) => (
+                  <div key={k}>{l}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
 /** where a tip's milestone marker sits on screen (same maths as the Chart + the scene camera) */
 const markerScreen = (at: number, t: number, sceneS: number, isPro: boolean) => {
   const P = project(t);
@@ -506,8 +588,9 @@ const markerScreen = (at: number, t: number, sceneS: number, isPro: boolean) => 
 };
 const TipCard: React.FC<{ t: number; sceneS: number }> = ({ t, sceneS }) => {
   if (t < 25.9 || t > 35.7) return null;
+  if (t >= FAN_A + 0.25) return <TipFan t={t} />;
   const cardIn = prog(t, 26.28, 26.62, easeOutExpo);
-  const cardOut = prog(t, 35.2, 35.6, easeInExpo);
+  const cardOut = prog(t, FAN_A, FAN_A + 0.25, easeInExpo);
   let cur = 0;
   TIPS.forEach((tp, i) => {
     if (t >= tp[0] - 0.05) cur = i;
@@ -618,7 +701,8 @@ const HUD_HIT = 1.81;
 const IntroHUD: React.FC<{ t: number }> = ({ t }) => {
   const endBuild = t > 53.0;
   if (t > 4.3 && !endBuild) return null;
-  const out = endBuild ? 0 : prog(t, 3.7, 4.15, easeInExpo);
+  const out = endBuild ? 0 : prog(t, 3.75, 4.15, easeInExpo);
+  const glass = endBuild ? 0 : hudGlass(t);
   // slam: a quick punch right at the start (frame 0 is the rest state)
   const slam = t < 0.6 ? Math.sin(Math.PI * clamp(t / 0.45)) * 0.14 * (1 - clamp(t / 0.6)) : 0;
   const hit = t > HUD_HIT && t < HUD_HIT + 0.5 ? (1 - (t - HUD_HIT) / 0.5) ** 2 : 0;
@@ -636,10 +720,11 @@ const IntroHUD: React.FC<{ t: number }> = ({ t }) => {
         width: 0,
         height: 0,
         opacity: 1 - out,
-        transform: `translate(${sx}px, ${sy}px) scale(${(1 + slam + hit * 0.06) * (1 + out * 1.2)})`,
+        transform: `translate(${sx}px, ${sy}px) perspective(1100px) rotateX(${glass * 16}deg) scale(${(1 + slam + hit * 0.06 + glass * 0.06) * (1 + out * 1.2)})`,
         filter: out ? `blur(${out * 12}px)` : undefined,
       }}
     >
+      <div style={{ position: "absolute", left: -420, top: -150, width: 840, height: 280, borderRadius: 36, background: "rgba(255,255,255,0.62)", border: "1.5px solid rgba(255,255,255,0.9)", boxShadow: "0 40px 90px rgba(90,60,25,0.18), inset 0 1px 0 rgba(255,255,255,0.9)", opacity: glass }} />
       <div style={{ position: "absolute", left: -380, top: -110, width: 760 }}>
         <div style={{ fontFamily: MONO, fontSize: 40, letterSpacing: 4, color: WHITE, height: 50 }}>
           {!endBuild && <Decode t={t} text="PLAYER 1" at={0.15} dur={0.5} />}
@@ -665,17 +750,46 @@ const IntroHUD: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
+const START_CLICK = 3.4;
 const PressStart: React.FC<{ t: number }> = ({ t }) => {
   if (t < 0.8 || t > 4.0) return null;
-  const blink = Math.floor((t - 0.8) * 2.4) % 2 === 0 ? 1 : 0.25;
+  const clicked = t >= START_CLICK;
+  const blink = clicked ? 1 : Math.floor((t - 0.8) * 2.4) % 2 === 0 ? 1 : 0.35;
+  const press = t > START_CLICK && t < START_CLICK + 0.25 ? Math.sin(Math.PI * ((t - START_CLICK) / 0.25)) : 0;
+  const fade = prog(t, 0.8, 1.2) * (1 - prog(t, 3.6, 3.95));
+  // cursor glides in from the lower right and clicks the button
+  const cin = prog(t, 2.75, 3.3, easeInOut);
+  const cx = lerp(900, 572, cin);
+  const cy = lerp(1830, 1598, cin);
+  const cop = prog(t, 2.75, 2.95) * (1 - prog(t, 3.55, 3.8));
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, top: 1560, textAlign: "center", fontFamily: MONO, fontSize: 28, letterSpacing: 6, color: "#8C877D", opacity: blink * prog(t, 0.8, 1.2) * (1 - prog(t, 3.6, 3.95)) }}>
-      ▶ PRESS START
-    </div>
+    <>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 1552, display: "flex", justifyContent: "center", opacity: fade }}>
+        <div
+          style={{
+            padding: "14px 34px",
+            borderRadius: 999,
+            border: `2px solid ${clicked ? GREEN : "#CFC7BA"}`,
+            background: clicked ? `${GREEN}18` : "rgba(255,255,255,0.6)",
+            fontFamily: MONO,
+            fontSize: 32,
+            letterSpacing: 6,
+            color: clicked ? GREEN : "#6F6A62",
+            opacity: blink,
+            transform: `scale(${1 - press * 0.08})`,
+          }}
+        >
+          ▶ PRESS START
+        </div>
+      </div>
+      <Cursor t={t} x={cx} y={cy} clickAt={START_CLICK} opacity={cop} />
+    </>
   );
 };
 
-/* Result counter */
+/* the clicked HUD turns into a tilted glass panel before the camera dives into the chart */
+const hudGlass = (t: number) => prog(t, START_CLICK + 0.02, START_CLICK + 0.35, easeOutExpo);
+
 const Result: React.FC<{ t: number }> = ({ t }) => {
   if (t < 43.2 || t > 47.55) return null;
   // critically damped count from 0 (motion-charts: no overshoot, no invented start value)
@@ -692,7 +806,14 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
         <span style={{ fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? "0 18px 40px rgba(80,55,25,0.12)" : undefined }}>{val}</span>
         <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
       </div>
-      <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#5E5B55", marginTop: 20, opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 16, marginTop: 20 }}>
+        <svg width={50} height={50} viewBox="0 0 50 50" style={{ opacity: inP }}>
+          <circle cx={25} cy={25} r={21} fill="none" stroke="#E6DFD3" strokeWidth={4} />
+          <circle cx={25} cy={25} r={21} fill="none" stroke={YELLOW} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${(val / 60) * 132} 132`} transform="rotate(-90 25 25)" />
+          <path d="M15 26 l7 7 l13 -15" fill="none" stroke={YELLOW} strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="34" strokeDashoffset={34 * (1 - prog(t, 45.0, 45.45, easeInOut))} />
+        </svg>
+        <div style={{ fontFamily: SANS, fontWeight: 600, fontSize: 38, color: "#5E5B55", opacity: sub, transform: `translateY(${(1 - sub) * 20}px)` }}>Outstanding Pearson Learner Award</div>
+      </div>
       <div style={{ fontFamily: SANS, fontWeight: 700, fontSize: 38, color: YELLOW, marginTop: 6, opacity: prog(t, 45.15, 45.8, easeOutExpo) }}>Mathematics</div>
     </div>
   );
@@ -781,6 +902,7 @@ export const V2: React.FC = () => {
       <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px) scale(${s})`, transformOrigin: "540px 820px" }}>
         <Chart t={t} />
         <IntroHUD t={t} />
+        <ChapterSweep t={t} />
         <ChapterLabel t={t} />
         <Terminal t={t} />
       </AbsoluteFill>
@@ -792,11 +914,11 @@ export const V2: React.FC = () => {
         <PressStart t={t} />
         <Kinetic t={t} text="Maths always|came easy to me." inAt={4.6} outAt={6.4} accent={YELLOW} y={TY} />
         <Kinetic t={t} text="But talent alone|doesn't get you an *award.*" inAt={6.64} outAt={8.95} accent={YELLOW} y={TY} size={76} />
-        <Kinetic t={t} text="I spent more time|*gaming* than studying." inAt={9.3} outAt={13.6} accent={RED} y={TY} size={78} />
-        <Kinetic t={t} text="Then asthma|hit me *hard.*" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
+        <Kinetic t={t} text="I spent more time|[pad] *gaming* than studying." inAt={9.3} outAt={13.6} accent={RED} y={TY} size={74} />
+        <Kinetic t={t} text="Then asthma|hit me [pulse] *hard.*" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
         <Kinetic t={t} text="I had to|slow down." inAt={17.25} outAt={20.6} accent={RED} y={TY} stagger={0.12} />
         <Bubble t={t} at={21.3} outAt={25.3} who="BEST FRIEND" text="You can do it." color={GREEN} x={500} y={390} />
-        <Kinetic t={t} text="So I came back.|With *confidence.*" inAt={22.3} outAt={25.25} accent={GREEN} y={TY} />
+        <Kinetic t={t} text="So I came back.|With [spark] *confidence.*" inAt={22.3} outAt={25.25} accent={GREEN} y={TY} />
         <TipCard t={t} sceneS={s} />
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
@@ -805,6 +927,7 @@ export const V2: React.FC = () => {
         <Result t={t} />
         <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} />
         {t < FLY6_B && <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={99} accent={YELLOW} y={TY} size={96} weight={800} />}
+        {t < FLY6_B && <SelectBox t={t} at={49.75} until={51.3} x={633.25} y={1337.88} w={150.75} h={105.59} color={YELLOW} />}
       </AbsoluteFill>
       </AbsoluteFill>
       {/* paper hides the switch from "inside the 6" back to the full view */}

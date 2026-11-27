@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, Sparkles } from "../premium/components";
+import { Ambience, Cursor, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, SelectBox, Sparkles } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
@@ -140,6 +140,7 @@ const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: st
 /* ================================================================== */
 // opening hook / loop seam: the film starts on (and loops back to) a frame filled by the blue dot
 const HOOK_END = 0.6;
+const SWELLS = [4.2, 5.95, 7.15]; // soft light from the dot between the opening lines
 const HOOK_R0 = 2300;
 const GLYPHS = ["dy/dx", "√x", "x²", "∫", "n!", "Δ", "sin θ", "f(x)", "π", "%", "∞", "Σ", "θ", "≈", "e^x", "∂"];
 
@@ -264,6 +265,12 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
         )}
       </div>
       <Ripple t={t} at={HOOK_END} x={CX} y={CY} color={BLUE} size={220} />
+      {SWELLS.map((at, i) => {
+        if (t < at || t > at + 1.0) return null;
+        const p = easeOutExpo(clamp((t - at) / 1.0));
+        const r = 40 + p * 640;
+        return <div key={i} style={{ position: "absolute", left: dx - r, top: dy - r, width: r * 2, height: r * 2, borderRadius: "50%", background: `radial-gradient(circle, ${BLUE}2E 0%, ${BLUE}10 45%, transparent 70%)`, opacity: 1 - p }} />;
+      })}
       <Ripple t={t} at={15.2} x={CX} y={CY} color={BLUE} size={220} />
     </AbsoluteFill>
   );
@@ -389,6 +396,14 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
     />
   );
   const cardTop = lerp(270, 96, re);
+  // cursor: glides in, taps the blue button (phone-local 34+46, 206+13), the tap triggers the relayout
+  const TAP = 23.95;
+  const cin = prog(t, 23.3, 23.85, easeInOut);
+  const cout = prog(t, 24.25, 24.75, easeInOut);
+  const btn = { x: CX - PW / 2 + 34 + 46, y: CY - PH / 2 + 206 + 13 };
+  const curX = lerp(lerp(780, btn.x, cin), 760, cout);
+  const curY = lerp(lerp(1060, btn.y, cin), 1000, cout);
+  const curOp = prog(t, 23.3, 23.5) * (1 - prog(t, 24.45, 24.75)) * (1 - collapse);
   return (
     <AbsoluteFill>
       {/* frame stroke draw-on */}
@@ -527,7 +542,106 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
           </div>
         </div>
       </div>
+      <Cursor t={t} x={curX} y={curY} clickAt={TAP} opacity={curOp} />
     </AbsoluteFill>
+  );
+};
+
+/* ================================================================== */
+/* Corridor of phone screens: the camera dollies through while the     */
+/* real phone stays centre stage ("Code taught me to build")            */
+/* ================================================================== */
+const MiniPhone: React.FC<{ k: number }> = ({ k }) => {
+  const grad = k % 3 === 0 ? `linear-gradient(120deg, ${BLUE}, ${VIOLET})` : k % 3 === 1 ? `linear-gradient(120deg, ${VIOLET}, #F28FB0)` : `linear-gradient(120deg, #4FC3A1, ${BLUE})`;
+  return (
+    <div style={{ position: "absolute", left: -150, top: -270, width: 300, height: 540, borderRadius: 40, background: "linear-gradient(180deg, #141A2B, #0E1320)", border: "1.5px solid rgba(160,180,255,0.2)", boxShadow: "0 30px 70px rgba(70,45,20,0.25)", overflow: "hidden" }}>
+      <div style={{ position: "absolute", left: 24, top: 40, width: 190, height: 16, borderRadius: 8, background: "#EEF1FA" }} />
+      <div style={{ position: "absolute", left: 24, top: 66, width: 130, height: 16, borderRadius: 8, background: "#EEF1FA" }} />
+      <div style={{ position: "absolute", left: 24, top: 104, width: 252, height: 150, borderRadius: 18, background: grad }} />
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} style={{ position: "absolute", left: 24 + (i % 2) * 130, top: 272 + Math.floor(i / 2) * 92, width: 122, height: 80, borderRadius: 14, background: "#1A2133" }} />
+      ))}
+      <div style={{ position: "absolute", left: 24, top: 470, width: 252, height: 6, borderRadius: 3, background: grad }} />
+    </div>
+  );
+};
+const CORRIDOR_A = 24.55;
+const CORRIDOR_B = 26.5;
+const PhoneCorridor: React.FC<{ t: number }> = ({ t }) => {
+  if (t < CORRIDOR_A || t > CORRIDOR_B) return null;
+  const dolly = Math.pow(prog(t, CORRIDOR_A, CORRIDOR_B), 1.6) * 3800;
+  const env = prog(t, CORRIDOR_A, CORRIDOR_A + 0.4, easeInOut) * (1 - prog(t, CORRIDOR_B - 0.35, CORRIDOR_B, easeInOut));
+  // four walls x five deep; each phone faces the corridor's axis
+  const walls: [number, number, string][] = [
+    [-560, 0, "rotateY(68deg)"],
+    [560, 0, "rotateY(-68deg)"],
+    [0, -880, "rotateX(-62deg)"],
+  ]; // (no floor wall: it would run through the headline)
+  const items: React.ReactNode[] = [];
+  walls.forEach(([wx, wy, rot], wi) => {
+    for (let k = 0; k < 6; k++) {
+      const z = -500 - k * 760 + dolly;
+      if (z > 700 || z < -4500) continue;
+      const near = clamp((z + 4500) / 1500); // fade in from the far end
+      const off = wi < 2 ? (k % 2 ? 180 : -180) : k % 2 ? 260 : -260;
+      const ox = wi < 2 ? 0 : off;
+      const oy = wi < 2 ? off : 0;
+      items.push(
+        <div key={`${wi}-${k}`} style={{ position: "absolute", left: CX + wx + ox, top: CY + wy + oy, transform: `translateZ(${z}px) ${rot}`, opacity: near, transformStyle: "preserve-3d" }}>
+          <MiniPhone k={wi * 6 + k} />
+        </div>
+      );
+    }
+  });
+  return (
+    <AbsoluteFill style={{ perspective: 900, perspectiveOrigin: `${CX}px ${CY}px`, opacity: env }}>
+      <AbsoluteFill style={{ transformStyle: "preserve-3d" }}>{items}</AbsoluteFill>
+    </AbsoluteFill>
+  );
+};
+
+/* ================================================================== */
+/* Opening line that builds sideways: the camera tracks the newest      */
+/* phrase, earlier phrases dim (widths measured: Inter 700 84px)        */
+/* ================================================================== */
+const PHRASES: [string, number, number][] = [
+  ["One question.", 536.45, 4.35],
+  ["One answer.", 480.03, 6.04],
+  ["One more *try.*", 520.67, 7.25],
+];
+const PH_GAP = 30;
+const PH_OUT = 9.35;
+const SlidingLine: React.FC<{ t: number }> = ({ t }) => {
+  if (t < PHRASES[0][2] - 0.05 || t > PH_OUT + 0.6) return null;
+  const lefts: number[] = [];
+  let acc = 0;
+  PHRASES.forEach(([, w]) => {
+    lefts.push(acc);
+    acc += w + PH_GAP;
+  });
+  const centre = (i: number) => lefts[i] + PHRASES[i][1] / 2;
+  let off = centre(0);
+  for (let i = 1; i < PHRASES.length; i++) off = lerp(off, centre(i), prog(t, PHRASES[i][2] - 0.15, PHRASES[i][2] + 0.55, easeInOut));
+  const e = prog(t, PH_OUT, PH_OUT + 0.45, easeInExpo);
+  return (
+    <div style={{ position: "absolute", left: 0, top: TY - 46, width: 4000, transform: `translate(${CX - off}px, 0px)`, fontFamily: SANS, fontWeight: 700, fontSize: 84, letterSpacing: "-0.035em", lineHeight: 1.1, color: INK, whiteSpace: "nowrap" }}>
+      {PHRASES.map(([txt, , at], i) => {
+        const p = prog(t, at, at + 0.7, easeOutExpo);
+        const next = i < PHRASES.length - 1 ? PHRASES[i + 1][2] : 99;
+        const dim = 1 - 0.7 * prog(t, next - 0.1, next + 0.4, easeInOut);
+        const op = clamp(p * 1.6) * dim * (1 - e);
+        return (
+          <span key={i} style={{ position: "absolute", left: lefts[i], top: 0, transform: `translateY(${(1 - p) * 60 - e * 60}px)`, opacity: op, filter: (1 - p) * 5 + e * 4 > 0.3 ? `blur(${(1 - p) * 5 + e * 4}px)` : undefined }}>
+            {txt.split(" ").map((w, j, arr) => (
+              <span key={j} style={{ color: w.startsWith("*") ? BLUE : undefined }}>
+                {w.replace(/\*/g, "")}
+                {j < arr.length - 1 ? " " : ""}
+              </span>
+            ))}
+          </span>
+        );
+      })}
+    </div>
   );
 };
 
@@ -1067,6 +1181,7 @@ export const V1: React.FC = () => {
       <Camera t={t}>
         <WaveScene t={t} />
         <BraceScene t={t} />
+        <PhoneCorridor t={t} />
         <Phone t={t} />
         <Pathway t={t} />
         <LearnersField t={t} />
@@ -1082,13 +1197,12 @@ export const V1: React.FC = () => {
         {/* giant "dot." slams in, then flies into its slot in the sentence (measured: scripts in scratch, Inter 700 84px) */}
         <GiantWord t={t} word="dot." color={BLUE} size={84} weight={700} from={{ x: CX, y: 1000, scale: 3.6 }} to={{ x: 651.73, y: 1332.42 }} inAt={0.5} moveAt={1.2} until={3.7} />
         <Kinetic t={t} text="Every big thing|starts as one|small *dot.*" inAt={1.15} outAt={3.85} accent={BLUE} y={TY} hideWord="dot." hideUntil={3.7} />
-        <Kinetic t={t} text="One question." inAt={4.35} outAt={5.75} accent={BLUE} y={TY} />
-        <Kinetic t={t} text="One answer." inAt={6.04} outAt={7.0} accent={BLUE} y={TY} />
-        <Kinetic t={t} text="One more *try.*" inAt={7.25} outAt={9.35} accent={BLUE} y={TY} />
-        <Kinetic t={t} text="Maths taught me|to see *patterns.*" inAt={9.9} outAt={14.15} accent={BLUE} y={TY} />
-        <Kinetic t={t} text="Patterns taught me|to *code.*" inAt={16.55} outAt={20.9} accent={BLUE} y={TY} />
-        <Kinetic t={t} text="Code taught me|to *build.*" inAt={21.95} outAt={26.4} accent={BLUE} y={TY + 70} />
+        <SlidingLine t={t} />
+        <Kinetic t={t} text="Maths taught me|to see [wave] *patterns.*" inAt={9.9} outAt={14.15} accent={BLUE} y={TY} />
+        <Kinetic t={t} text="Patterns taught me|to [code] *code.*" inAt={16.55} outAt={20.9} accent={BLUE} y={TY} />
+        <Kinetic t={t} text="Code taught me|to [phone] *build.*" inAt={21.95} outAt={26.4} accent={BLUE} y={TY + 70} />
         <Kinetic t={t} text="With Pearson Edexcel,|every step|leads *somewhere.*" inAt={32.4} outAt={35.15} accent={BLUE} y={TY + 70} size={72} />
+        <SelectBox t={t} at={33.7} until={35.1} x={432.48} y={1348.91} w={410.33} h={79.19} color={BLUE} />
         <Kinetic t={t} text="This year,|I'm *one of them.*" inAt={41.06} outAt={43.2} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Start small.|Keep *going.*" inAt={45.9} outAt={47.1} accent={BLUE} y={1010} />
