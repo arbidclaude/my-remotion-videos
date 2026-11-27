@@ -99,3 +99,16 @@ across every blur-window edge.
   "gamer." slam and the fly-through the "6": smooth smear.
 
 ## Round 5 (final renders after the blur fix)
+
+Re-rendered both films with the new blur and re-measured: background brightness across every blur-window edge
+now changes by at most 0.5 levels in V1 (was 3+); in V2 the only large step is the intended cut from the
+yellow inside of the "6" to paper. V1's loop seam is back to 44.4 dB (normal step 45.5 dB).
+
+**What was weak:** frame by frame, the two fastest frames of V2's fly-through the "6" (thin, high-contrast
+text accelerating towards the lens) still broke into a few stepped copies at 16 samples.
+
+**What changed:** 32 samples on just that 0.3 s (40 ran Chrome out of memory; 32 at two render tabs
+fits). The frames are now a continuous radial smear.
+
+**Final checks:** V1 1521 frames, V2 1620 frames, 1080×1920 at 30 fps; −16.0 LUFS integrated, true peak
+−5.8 / −5.3 dBFS; loop seams as close as a normal frame step. A full critique finds nothing left to fix.
