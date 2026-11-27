@@ -771,6 +771,8 @@ const markerScreen = (at: number, t: number, sceneS: number, isPro: boolean) => 
   const my = P.sy(WY(score(x))) - (isPro ? 70 : 46);
   return { x: (mx - 540) * sceneS + 540, y: (my - 820) * sceneS + 820 };
 };
+/* the tip card never sits frozen: a slow float + breath while the chart pans behind it */
+const cardDrift = (t: number) => ({ dy: Math.sin(t * 0.9) * 7, rot: Math.sin(t * 0.6 + 1) * 0.45, sc: 1 + 0.008 * Math.sin(t * 0.7) });
 const TipCard: React.FC<{ t: number; sceneS: number }> = ({ t, sceneS }) => {
   if (t < 25.9 || t > 35.7) return null;
   if (t >= FAN_A + 0.25) return <TipFan t={t} />;
@@ -795,7 +797,7 @@ const TipCard: React.FC<{ t: number; sceneS: number }> = ({ t, sceneS }) => {
         const w = lerp(44, CARD.w, m);
         const h = lerp(44, CARD.h, m);
         const cx = lerp(from.x, CARD.left + CARD.w / 2, m);
-        const cy = lerp(from.y, CARD.top + CARD.h / 2, m);
+        const cy = lerp(from.y, CARD.top + CARD.h / 2 + cardDrift(t).dy, m);
         return (
           <div
             key={`g${i}`}
@@ -825,7 +827,7 @@ const TipCard: React.FC<{ t: number; sceneS: number }> = ({ t, sceneS }) => {
           border: `1.5px solid ${accentIsYellow ? "rgba(227,160,8,0.35)" : "rgba(60,45,30,0.08)"}`,
           boxShadow: "0 34px 80px rgba(90,60,25,0.16), 0 8px 22px rgba(90,60,25,0.08)",
           opacity: cardIn * (1 - cardOut),
-          transform: `translateY(${cardOut * 30}px) scale(${lerp(0.97, 1, cardIn)})`,
+          transform: `translateY(${cardOut * 30 + cardDrift(t).dy}px) rotate(${cardDrift(t).rot}deg) scale(${lerp(0.97, 1, cardIn) * cardDrift(t).sc})`,
           filter: cardOut ? `blur(${cardOut * 10}px)` : undefined,
           overflow: "hidden",
         }}
@@ -995,14 +997,41 @@ const Digit: React.FC<{ from: string; to: string; r: number }> = ({ from, to, r 
     </span>
   </span>
 );
-const Score: React.FC<{ t: number }> = ({ t }) => {
-  if (t < FLY59_A || t >= SCORE_END) return null;
+// flyer centre includes the "." (13.52 px per unit scale right of the digits' centre)
+const scorePos = (t: number) => {
   const m = cubicIO(clamp((t - FLY59_A) / (FLY59_B - FLY59_A)));
   const mv = cubicIO(clamp((t - ROLL_A) / (ROLL_B - ROLL_A)));
-  const x = lerp(lerp(473.6, 653.3, m), 708.6, mv);
-  const y = lerp(lerp(1320, 1335, m), 1390.7, mv);
-  const sc = Math.exp(lerp(Math.log(2.5), 0, m));
-  const size = lerp(100, 96, mv);
+  const sc0 = 2.5 * resScale(FLY59_A);
+  return {
+    x: lerp(lerp(439.8 + 13.52 * sc0, 653.3, m), 708.6, mv),
+    y: lerp(lerp(1320, 1335, m), 1390.7, mv),
+    sc: Math.exp(lerp(Math.log(sc0), 0, m)),
+    size: lerp(100, 96, mv),
+  };
+};
+/* the head of the score line lifts off the chart and lands as the full stop of "I got 59."
+   (measured: the "." ink centre sits +62.7, +28.0 from the "59." span centre at 100 px, r 9.5 = the head dot) */
+const STOP_A = 47.32;
+const HeadStop: React.FC<{ t: number; s: number }> = ({ t, s }) => {
+  if (t < STOP_A || t >= FLY59_B) return null;
+  const P = project(STOP_A);
+  const hx = 540 + (P.sx(WX(1)) - 540) * s;
+  const hy = 820 + (P.sy(WY(score(1))) - 820) * s;
+  const sp = scorePos(t);
+  const k = sp.size / 100;
+  const tx = sp.x + 62.7 * k * sp.sc;
+  const ty = sp.y + 28.0 * k * sp.sc;
+  const u = cubicIO(clamp((t - STOP_A) / (FLY59_B - STOP_A)));
+  const cx = (hx + tx) / 2 + 140;
+  const cy = (hy + ty) / 2;
+  const x = (1 - u) ** 2 * hx + 2 * (1 - u) * u * cx + u * u * tx;
+  const y = (1 - u) ** 2 * hy + 2 * (1 - u) * u * cy + u * u * ty;
+  const r = lerp(9, 9.5 * k * sp.sc, u);
+  return <div style={{ position: "absolute", left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: "50%", background: YELLOW, boxShadow: `0 0 ${18 * (1 - u) + 6}px ${YELLOW}AA` }} />;
+};
+const Score: React.FC<{ t: number }> = ({ t }) => {
+  if (t < FLY59_A || t >= SCORE_END) return null;
+  const { x, y, sc, size } = scorePos(t);
   // odometer: the units roll first (9 -> 0) and carry into the tens (5 -> 6)
   const units = prog(t, ODO_A, ODO_A + 0.36, easeOutBack);
   const tens = prog(t, ODO_A + 0.03, ODO_A + 0.39, easeOutBack);
@@ -1021,12 +1050,12 @@ const Score: React.FC<{ t: number }> = ({ t }) => {
         whiteSpace: "nowrap",
         color: YELLOW,
         textShadow: "0 10px 30px rgba(80,55,25,0.1)",
-        // the full stop wipes in as the number lands in the sentence
-        clipPath: `inset(-30% ${(1 - m) * 27}px -30% -30%)`,
       }}
     >
       <Digit from="5" to="6" r={tens} />
-      <Digit from="9" to="0" r={units} />.
+      <Digit from="9" to="0" r={units} />
+      {/* the full stop is the chart's head dot (HeadStop) until it lands */}
+      <span style={{ opacity: t >= FLY59_B ? 1 : 0 }}>.</span>
     </span>
   );
 };
@@ -1056,6 +1085,7 @@ const Circle59: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
+const resScale = (t: number) => 1 + 0.04 * clamp((t - 43.3) / (FLY59_A - 43.3));
 const Result: React.FC<{ t: number }> = ({ t }) => {
   if (t < 43.2 || t > 47.55) return null;
   // critically damped count from 0 (motion-charts: no overshoot, no invented start value)
@@ -1067,7 +1097,7 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
   const out = prog(t, 47.22, 47.5, easeInExpo);
   const sub = prog(t, 44.95, 45.6, easeOutExpo);
   return (
-    <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined }}>
+    <div style={{ position: "absolute", left: 0, right: 0, top: TY - 140, textAlign: "center", opacity: inP * (1 - out), filter: out ? `blur(${out * 12}px)` : undefined, transform: `scale(${resScale(t)})`, transformOrigin: "439.8px 125px" }}>
       <div style={{ fontFamily: SANS, fontWeight: 800, letterSpacing: "-0.05em", lineHeight: 1 }}>
         <span style={{ opacity: t >= FLY59_A ? 0 : 1, fontSize: 250, color: done ? YELLOW : WHITE, display: "inline-block", minWidth: "1.25em", textAlign: "right", fontVariantNumeric: "tabular-nums", transform: `scale(${done ? lerp(1.15, 1, land) : 1})`, textShadow: done ? "0 18px 40px rgba(80,55,25,0.12)" : undefined }}>{val}</span>
         <span style={{ fontSize: 110, color: "#A6A198", marginLeft: 10 }}>/60</span>
@@ -1200,6 +1230,7 @@ const V2Scene: React.FC = () => {
         <Result t={t} />
         <Kinetic t={t} text="I got *59.*" inAt={47.52} outAt={48.5} accent={YELLOW} y={TY} size={100} weight={800} hideWord="59." />
         <Score t={t} />
+        <HeadStop t={t} s={s} />
         <Circle59 t={t} />
         {t < FLY6_B && <Kinetic t={t} text="Now you go|get the *60.*" inAt={48.95} outAt={99} accent={YELLOW} y={TY} size={96} weight={800} hideWord="60." />}
         {t < FLY6_B && <SelectBox t={t} at={49.75} until={51.3} x={633.25} y={1337.88} w={150.75} h={105.59} color={YELLOW} />}

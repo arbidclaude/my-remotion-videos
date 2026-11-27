@@ -278,6 +278,65 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
 };
 
 /* ================================================================== */
+/* "patterns." first sits on a wave over thin design guides (a pattern  */
+/* on a grid), then flattens into the word. Measured per letter (Inter  */
+/* 700 84px, line 2 of "Maths taught me|to see [wave] patterns."):       */
+/* ================================================================== */
+const PAT: [string, number][] = [["p", 551.48], ["a", 602.31], ["t", 648.14], ["t", 673], ["e", 700], ["r", 747.11], ["n", 778.98], ["s", 828.34], [".", 872.45]];
+const PAT_TOP = 1237.52; // line box top (line-height 1.1)
+const PAT_BASE = 1314.3; // baseline
+const PAT_A = 10.21; // the Kinetic word's own start
+const PAT_FLAT = 10.95;
+const PAT_HAND = 11.6; // the Kinetic word (sweep finished, solid blue) takes over
+const PatternWord: React.FC<{ t: number }> = ({ t }) => {
+  if (t < PAT_A || t >= PAT_HAND) return null;
+  const flat = prog(t, PAT_FLAT, PAT_FLAT + 0.5, easeOutBack);
+  const g = prog(t, PAT_A + 0.05, PAT_A + 0.4) * (1 - prog(t, PAT_HAND - 0.3, PAT_HAND));
+  const x0 = PAT[0][1];
+  const pos = PAT.map(([, x], i) => ({ x: x0 + (x - x0) * (1 + 0.12 * (1 - flat)), dy: 46 * Math.sin(i * 0.85 + 0.6) * (1 - flat) }));
+  const wave = pos.map((p, i) => `${i ? "L" : "M"}${(p.x + 14).toFixed(1)},${(PAT_BASE - 30 + p.dy).toFixed(1)}`).join(" ");
+  return (
+    <>
+      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, overflow: "visible", opacity: g }}>
+        {pos.map((p, i) => (
+          <line key={i} x1={p.x + 14} x2={p.x + 14} y1={PAT_TOP - 26} y2={PAT_TOP + 118} stroke={BLUE} strokeOpacity={0.32} strokeWidth={1.5} />
+        ))}
+        <line x1={x0 - 20} x2={pos[pos.length - 1].x + 50} y1={PAT_BASE} y2={PAT_BASE} stroke={BLUE} strokeOpacity={0.32} strokeWidth={1.5} />
+        <path d={wave} fill="none" stroke={BLUE} strokeOpacity={0.35} strokeWidth={2} strokeDasharray="5 6" />
+        {pos.map((p, i) => (
+          <circle key={`c${i}`} cx={p.x + 14} cy={PAT_BASE - 30 + p.dy} r={3.5} fill="#FFFFFF" stroke={BLUE} strokeWidth={1.5} strokeOpacity={0.6} />
+        ))}
+      </svg>
+      {PAT.map(([ch], i) => {
+        const pin = prog(t, PAT_A + i * 0.03, PAT_A + i * 0.03 + 0.55, easeOutExpo);
+        return (
+          <span
+            key={i}
+            style={{
+              position: "absolute",
+              left: pos[i].x,
+              top: PAT_TOP,
+              fontFamily: SANS,
+              fontWeight: 700,
+              fontSize: 84,
+              letterSpacing: "-0.035em",
+              lineHeight: 1.1,
+              color: BLUE,
+              opacity: clamp(pin * 1.6),
+              transform: `translateY(${pos[i].dy + (1 - pin) * 50}px)`,
+              filter: pin < 0.95 ? `blur(${(1 - pin) * 6}px)` : undefined,
+              textShadow: "0 10px 30px rgba(80,55,25,0.1)",
+            }}
+          >
+            {ch}
+          </span>
+        );
+      })}
+    </>
+  );
+};
+
+/* ================================================================== */
 /* Scene B — braces + code (15.3 – 21.9)                               */
 /* ================================================================== */
 type Tok = [string, string];
@@ -1421,7 +1480,8 @@ const V1Scene: React.FC = () => {
         <Kinetic t={t} text="Every big thing|starts as one|small *dot.*" inAt={1.15} outAt={3.85} accent={BLUE} y={TY} hideWord="dot." hideUntil={3.7} />
         <SlidingLine t={t} />
         <FlyingStop t={t} />
-        <Kinetic t={t} text="Maths taught me|to see [wave] *patterns.*" inAt={9.9} outAt={14.15} accent={BLUE} y={TY} />
+        <Kinetic t={t} text="Maths taught me|to see [wave] *patterns.*" inAt={9.9} outAt={14.15} accent={BLUE} y={TY} hideWord="patterns." hideUntil={PAT_HAND} />
+        <PatternWord t={t} />
         <Kinetic t={t} text="Patterns taught me|to [code] *code.*" inAt={16.55} outAt={20.9} accent={BLUE} y={TY} />
         <Kinetic t={t} text="Code taught me|to [phone] *build.*" inAt={21.95} outAt={26.4} accent={BLUE} y={TY + 70} />
         <Kinetic t={t} text="With Pearson Edexcel,|every step|leads *somewhere.*" inAt={32.4} outAt={35.15} accent={BLUE} y={TY + 70} size={72} hideWord="somewhere." hideUntil={REEL_HAND} />
