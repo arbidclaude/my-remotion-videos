@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile, useCurrentFrame } from "remotion";
 import { MONO, SANS } from "./fonts";
-import { clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
+import { clamp, easeInExpo, easeInOut, easeOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand } from "./lib";
 
 /* icons for inline chips in Kinetic text ("[wave]" etc.), 24x24 stroke paths */
 export const CHIP_ICONS: Record<string, string> = {
@@ -42,7 +42,9 @@ export const Kinetic: React.FC<{
   hideWord?: string;
   /** hideWord is hidden only before this time (then the real word takes over, e.g. for its exit) */
   hideUntil?: number;
-}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1, chars = false, hideWord, hideUntil = 1e9 }) => {
+  /** "focus": words slowly pull into focus in place; "streak": words open out of a light streak from the centre */
+  mode?: "rise" | "focus" | "streak";
+}> = ({ t, text, inAt, outAt, accent, y = 1150, size = 84, weight = 700, stagger = 0.07, accentGlow = true, color = INK, exitDir = -1, chars = false, hideWord, hideUntil = 1e9, mode = "rise" }) => {
   if (t < inAt - 0.05 || t > outAt + 0.6) return null;
   const lines = text.split("|");
   const hi = mixColor(accent, "#ffffff", 0.55);
@@ -71,13 +73,21 @@ export const Kinetic: React.FC<{
             const isAccent = raw.startsWith("*");
             const word = raw.replace(/\*/g, "");
             const i = idx++;
-            const start = inAt + li * 0.09 + wi * stagger * 0.8 + (isAccent ? 0.05 : 0);
-            const p = prog(t, start, start + 0.7, easeOutExpo);
+            const mid = (arr.length - 1) / 2;
+            const start =
+              mode === "focus"
+                ? inAt + i * 0.36
+                : mode === "streak"
+                  ? inAt + Math.abs(wi - mid) * 0.07
+                  : inAt + li * 0.09 + wi * stagger * 0.8 + (isAccent ? 0.05 : 0);
+            const p = mode === "focus" ? prog(t, start, start + 1.3, easeOut) : prog(t, start, start + (mode === "streak" ? 0.65 : 0.7), easeOutExpo);
             const e = prog(t, outAt + li * 0.05 + wi * 0.02, outAt + li * 0.05 + wi * 0.02 + 0.45, easeInExpo);
-            const op = word === hideWord && t < hideUntil ? 0 : clamp(p * 1.6) * (1 - e);
-            // rise from below the mask, leave upward through it
-            const ty = (1 - p) * 1.1 * size * 1.1 + e * exitDir * 1.1 * size * 1.1;
-            const blur = (1 - p) * 5 + e * 4;
+            const op = word === hideWord && t < hideUntil ? 0 : clamp(p * (mode === "focus" ? 1.25 : 1.6)) * (1 - e);
+            // rise from below the mask, leave upward through it (focus/streak: arrive in place)
+            const rise = mode === "rise" ? (1 - p) * 1.1 * size * 1.1 : mode === "focus" ? (1 - p) * 0.12 * size : 0;
+            const ty = rise + e * exitDir * 1.1 * size * 1.1;
+            const blur = (1 - p) * (mode === "focus" ? 16 : mode === "streak" ? 9 : 5) + e * 4;
+            const streakTf = mode === "streak" ? ` scale(${lerp(1.9, 1, p)}, ${lerp(0.35, 1, p)})` : "";
             const sweep = prog(t, start + 0.35, start + 1.3, easeOutExpo);
             void i;
             const chip = /^\[(\w+)\]$/.exec(raw);
@@ -141,9 +151,9 @@ export const Kinetic: React.FC<{
                   display: "inline-block",
                   marginRight: wi === arr.length - 1 ? 0 : "0.24em",
                   opacity: op,
-                  transform: `translateY(${ty}px)`,
+                  transform: `translateY(${ty}px)${streakTf}`,
                   filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
-                  color: isAccent ? accent : undefined,
+                  color: isAccent ? accent : mode === "streak" && p < 1 ? mixColor("#E9A93B", color.startsWith("#") ? color : INK, p) : undefined,
                   textShadow: `0 10px 30px rgba(80,55,25,${0.1 * op})`,
                   backgroundImage: isAccent
                     ? `linear-gradient(100deg, ${accent} ${sweep * 140 - 40}%, ${hi} ${sweep * 140 - 20}%, ${accent} ${sweep * 140}%)`
@@ -440,5 +450,127 @@ export const Cursor: React.FC<{ t: number; x: number; y: number; clickAt: number
         <path d="M2 1 L2 21 L7.5 16 L11 24.5 L14.5 23 L11 14.8 L18.5 14.8 Z" fill={INK} stroke="#FFFFFF" strokeWidth={1.6} strokeLinejoin="round" />
       </svg>
     </>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* LightStreak: a warm horizontal glint that opens out from the centre  */
+/* (pair with Kinetic mode="streak" so the line forms out of it).       */
+/* ------------------------------------------------------------------ */
+export const LightStreak: React.FC<{ t: number; at: number; y: number; x?: number; width?: number; color?: string }> = ({ t, at, y, x = 540, width = 780, color = "#F2B544" }) => {
+  if (t < at || t > at + 1.2) return null;
+  const p = prog(t, at, at + 0.5, easeOutExpo);
+  const fade = prog(t, at + 0.35, at + 1.15, easeInOut);
+  const w = width * p;
+  const star = (sx: number, i: number) => (
+    <svg key={i} width={34} height={34} viewBox="-10 -10 20 20" style={{ position: "absolute", left: sx - 17, top: y - 17, transform: `rotate(${p * 90}deg) scale(${lerp(0.4, 1, p)})`, opacity: 1 - fade, overflow: "visible" }}>
+      <path d="M0,-10 Q1.2,-1.2 10,0 Q1.2,1.2 0,10 Q-1.2,1.2 -10,0 Q-1.2,-1.2 0,-10 Z" fill={color} />
+    </svg>
+  );
+  return (
+    <>
+      <div style={{ position: "absolute", left: x - w * 0.6, top: y - 40, width: w * 1.2, height: 80, borderRadius: "50%", background: `radial-gradient(ellipse, ${color}50 0%, ${color}14 40%, transparent 70%)`, opacity: 1 - fade }} />
+      <div style={{ position: "absolute", left: x - w / 2, top: y - 1.5, width: w, height: 3, borderRadius: 2, background: `linear-gradient(90deg, transparent, ${color} 25%, #FFFFFF 50%, ${color} 75%, transparent)`, opacity: 1 - fade }} />
+      {star(x - w / 2, 0)}
+      {star(x + w / 2, 1)}
+    </>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* TypedTags: hashtag lines typed by a caret into pills that grow with   */
+/* the text (one pill per line, typed one after the other).             */
+/* ------------------------------------------------------------------ */
+export const TypedTags: React.FC<{ t: number; at: number; lines: string[]; y: number; accent: string; speed?: number; out?: number; size?: number }> = ({ t, at, lines, y, accent, speed = 62, out = 1e9, size = 34 }) => {
+  const starts: number[] = [];
+  let acc = at;
+  lines.forEach((l) => {
+    starts.push(acc);
+    acc += l.length / speed + 0.06;
+  });
+  if (t < at - 0.15 || t > out + 0.5) return null;
+  const o = prog(t, out, out + 0.4, easeInOut);
+  let active = 0;
+  starts.forEach((s, i) => {
+    if (t >= s - 0.12) active = i;
+  });
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, top: y, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, opacity: 1 - o, transform: `translateY(${o * 14}px)` }}>
+      {lines.map((line, i) => {
+        const s = starts[i];
+        const pop = prog(t, s - 0.12, s + 0.18, easeOutBack);
+        if (pop <= 0.001) return <div key={i} style={{ height: size * 1.25 + 18 }} />;
+        const n = Math.floor(clamp((t - s) * speed, 0, line.length));
+        const typing = n < line.length && t >= s;
+        const caretOn = i === active && (typing || Math.floor(t * 3.2) % 2 === 0);
+        return (
+          <div
+            key={i}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              padding: "9px 26px",
+              minHeight: size * 1.25,
+              borderRadius: 999,
+              background: "rgba(255,255,255,0.72)",
+              border: `1.5px solid ${accent}55`,
+              boxShadow: "0 14px 30px rgba(90,60,25,0.10)",
+              fontFamily: SANS,
+              fontWeight: 500,
+              fontSize: size,
+              letterSpacing: "-0.01em",
+              color: "#6E6A62",
+              whiteSpace: "pre",
+              opacity: clamp(pop * 1.4),
+              transform: `scale(${lerp(0.7, 1, pop)})`,
+            }}
+          >
+            {line
+              .slice(0, n)
+              .split("")
+              .map((ch, k) => (
+                <span key={k} style={{ color: ch === "#" ? accent : undefined }}>
+                  {ch}
+                </span>
+              ))}
+            <span style={{ display: "inline-block", width: 3, height: size * 0.95, marginLeft: n ? 3 : 0, borderRadius: 2, background: accent, opacity: caretOn ? 1 : 0 }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* RollWord: a whole word rolls up into place and out again (for a      */
+/* cycling word, e.g. "Beyond the gaming. / asthma. / Grades.").        */
+/* ------------------------------------------------------------------ */
+export const RollWord: React.FC<{ t: number; text: string; inAt: number; outAt: number; x: number; y: number; size: number; weight: number; color: string; letterSpacing?: string }> = ({ t, text, inAt, outAt, x, y, size, weight, color, letterSpacing = "-0.035em" }) => {
+  if (t < inAt || t > outAt + 0.14) return null;
+  const pin = prog(t, inAt, inAt + 0.22, easeOutExpo);
+  const pout = prog(t, outAt, outAt + 0.13, easeInExpo);
+  const ty = (1 - pin) * 0.55 * size - pout * 0.55 * size;
+  const blur = (1 - pin) * 10 + pout * 10;
+  return (
+    <span
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: `translate(-50%, -50%) translateY(${ty}px)`,
+        fontFamily: SANS,
+        fontWeight: weight,
+        fontSize: size,
+        letterSpacing,
+        lineHeight: 1.1,
+        color,
+        whiteSpace: "nowrap",
+        opacity: clamp(pin * 1.5) * (1 - pout),
+        filter: blur > 0.3 ? `blur(${blur}px)` : undefined,
+        textShadow: "0 10px 30px rgba(80,55,25,0.1)",
+      }}
+    >
+      {text}
+    </span>
   );
 };

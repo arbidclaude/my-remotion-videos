@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Cursor, Decode, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, SelectBox, Sparkles } from "../premium/components";
+import { Ambience, Cursor, Decode, Flash, FilmLook, GiantWord, INK, Kinetic, LightStreak, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, mixColor, prog, rand, smoothKeys } from "../premium/lib";
 
 export const V2_DURATION = 54;
@@ -63,7 +63,7 @@ const colorAt = (x: number) => {
 /* chapter tint for the room light */
 const TINTS: [number, string][] = [
   [0, "#F4EEE4"], [8.6, "#F4EEE4"], [9.4, "#FBE6E6"], [13.6, "#FBE6E6"], [14.2, "#F8D8DC"], [20.4, "#F6E3E3"],
-  [21.4, "#DDF3E6"], [35.3, "#DDF3E6"], [35.9, "#FDE8D6"], [42.6, "#FDE8D6"], [43.2, "#FFF0C8"], [52.6, "#F7EFDF"], [53.6, "#F4EEE4"], [54, "#F4EEE4"],
+  [21.9, "#F6E3E3"], [21.93, "#DDF3E6"], [35.3, "#DDF3E6"], [35.9, "#FDE8D6"], [42.6, "#FDE8D6"], [43.2, "#FFF0C8"], [52.6, "#F7EFDF"], [53.6, "#F4EEE4"], [54, "#F4EEE4"],
 ];
 const tintAt = (t: number) => {
   for (let i = 0; i < TINTS.length - 1; i++) {
@@ -303,35 +303,50 @@ const Chart: React.FC<{ t: number }> = ({ t }) => {
             );
           })()}
 
-        {/* reveal labels */}
+        {/* reveal callouts: anchor dot + leader line + label, drawn on one after another */}
         {P.r > 0.5 &&
           (
             [
-              [0.22, "GAMING", RED, -1, 46.0],
-              [0.48, "ASTHMA", RED, 1, 46.15],
-              [0.85, "FREEDOM", ORANGE, -1, 46.3],
-            ] as [number, string, string, number, number][]
-          ).map(([x, label, col, side, at]) => {
+              [0.22, "GAMING", RED, 1, -1, 46.0],
+              [0.48, "ASTHMA", RED, 1, 1, 46.15],
+              [0.68, "THE CLIMB", GREEN, 1, 1, 46.22],
+              [0.85, "FREEDOM", ORANGE, -1, -1, 46.3],
+            ] as [number, string, string, number, number, number][]
+          ).map(([x, label, col, dx, dy, at]) => {
             const px = P.sx(WX(x));
             const py = P.sy(WY(score(x)));
             const p = lbl(at);
+            const dr = prog(t, at, at + 0.45, easeInOut);
+            const ex = px + dx * 44;
+            const ey = py + dy * 54;
             return (
-              <text
-                key={label}
-                x={px + (side < 0 ? 22 : 0)}
-                y={py + side * 52 + (1 - p) * 16}
-                textAnchor={side < 0 ? "start" : "middle"}
-                fontFamily="JetBrains Mono"
-                fontWeight={500}
-                fontSize={38}
-                letterSpacing={3}
-                fill={col}
-                opacity={p}
-              >
-                {label}
-              </text>
+              <g key={label}>
+                <path d={`M${px + dx * 8},${py + dy * 10} L${ex},${ey} L${ex + dx * 30},${ey}`} fill="none" stroke={col} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={`${dr} 1`} />
+                <circle cx={px} cy={py} r={7 * prog(t, at - 0.05, at + 0.3, easeOutBack)} fill="#FFFFFF" stroke={col} strokeWidth={3} />
+                <text x={ex + dx * 40} y={ey + 12 + (1 - p) * 10} textAnchor={dx < 0 ? "end" : "start"} fontFamily="JetBrains Mono" fontWeight={500} fontSize={34} letterSpacing={3} fill={col} opacity={prog(t, at + 0.2, at + 0.7, easeOutExpo)}>
+                  {label}
+                </text>
+              </g>
             );
           })}
+        {/* live callout at the bottom of the V while the friend's message arrives */}
+        {t > 21.75 && t < 25.6 &&
+          (() => {
+            const px = P.sx(WX(0.48));
+            const py = P.sy(WY(score(0.48)));
+            const dr = prog(t, 21.8, 22.25, easeInOut);
+            const o = 1 - prog(t, 25.0, 25.5);
+            const ex = px + 50;
+            const ey = py + 62;
+            return (
+              <g opacity={o}>
+                <path d={`M${px + 9},${py + 11} L${ex},${ey} L${ex + 32},${ey}`} fill="none" stroke={RED} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray={`${dr} 1`} />
+                <text x={ex + 44} y={ey + 11} fontFamily="JetBrains Mono" fontWeight={500} fontSize={30} letterSpacing={3} fill={RED} opacity={prog(t, 22.05, 22.5, easeOutExpo)}>
+                  LOWEST POINT
+                </text>
+              </g>
+            );
+          })()}
         {P.r > 0.5 && (
           <text x={hxS - 30} y={hyS + 50} textAnchor="end" fontFamily="JetBrains Mono" fontWeight={500} fontSize={50} fill={YELLOW} opacity={lbl(46.45)}>
             59/60
@@ -473,6 +488,128 @@ const Terminal: React.FC<{ t: number }> = ({ t }) => {
           </div>
         );
       })}
+    </div>
+  );
+};
+
+/* 3D cloud of excuses drifting past the lens during the distraction chapter */
+const THOUGHTS = ["one more match", "later", "tomorrow", "5 more mins", "after this game", "rank up first", "homework?", "next week", "maybe", "respawn", "revise later", "boss fight", "one more level", "it's fine", "exam? soon", "just 10 min", "after dinner", "new season"];
+const CLOUD_A = 9.2;
+const CLOUD_B = 13.95;
+const ThoughtCloud: React.FC<{ t: number }> = ({ t }) => {
+  if (t < CLOUD_A || t > CLOUD_B) return null;
+  const env = prog(t, CLOUD_A, CLOUD_A + 0.8, easeInOut) * (1 - prog(t, CLOUD_B - 0.55, CLOUD_B, easeInOut));
+  // 2.5D: every note sits in an open zone (top right, or the band between chart and headline)
+  // and slowly comes towards the lens: grows, drifts outwards, passes through focus, then blurs out
+  return (
+    <AbsoluteFill style={{ opacity: env, pointerEvents: "none" }}>
+      {THOUGHTS.map((w, i) => {
+        const top = i % 5 < 2;
+        const k = top ? Math.floor(i / 5) * 2 + (i % 5) : i - Math.floor(i / 5) * 2 - Math.min(2, i % 5); // index within its zone
+        const bx = top ? 700 + (k % 2) * 200 + (rand(i * 1.9) - 0.5) * 80 : 130 + ((k * 3) % 11) * 82 + (rand(i * 1.9) - 0.5) * 40;
+        const by = top ? 170 + (k / 7) * 330 + (rand(i * 2.7) - 0.5) * 40 : 950 + (k % 3) * 85 + (rand(i * 2.7) - 0.5) * 30;
+        const d = rand(i * 4.3) * 0.7 + (t - CLOUD_A) * 0.17;
+        if (d > 1.05) return null;
+        const sc = lerp(0.5, 1.55, d);
+        const blur = Math.min(9, Math.abs(d - 0.5) * 14);
+        const op = clamp(d / 0.18) * (1 - clamp((d - 0.85) / 0.2));
+        const x = bx + (bx - 540) * 0.3 * d;
+        const y = by + (top ? (by - 760) * 0.25 * d : 0);
+        const kind = i % 3;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: x,
+              top: y,
+              transform: `translate(-50%, -50%) scale(${sc}) rotate(${(rand(i * 7.7) - 0.5) * 22}deg)`,
+              padding: "10px 20px",
+              borderRadius: 10,
+              background: kind === 0 ? "#FFFFFF" : kind === 1 ? "#FDE4E8" : "#FFF3D2",
+              boxShadow: "0 16px 34px rgba(90,60,25,0.14)",
+              fontFamily: MONO,
+              fontSize: 30,
+              color: kind === 1 ? RED : INK,
+              whiteSpace: "nowrap",
+              opacity: op * 0.92,
+              filter: blur > 0.4 ? `blur(${blur}px)` : undefined,
+            }}
+          >
+            {w}
+          </div>
+        );
+      })}
+    </AbsoluteFill>
+  );
+};
+
+/* turning point: green room light opens out of the lowest point in a growing circle */
+const WIPE_A = 21.13;
+const WIPE_B = 21.93;
+const TurnWipe: React.FC<{ t: number }> = ({ t }) => {
+  if (t < WIPE_A || t >= WIPE_B) return null;
+  const P = project(t);
+  const x = P.sx(WX(0.48));
+  const y = P.sy(WY(score(0.48)));
+  const r = 2400 * prog(t, WIPE_A, WIPE_B - 0.05, easeInOut);
+  return (
+    <>
+      <AbsoluteFill style={{ background: `radial-gradient(110% 70% at 60% 38%, #DDF3E6 0%, ${BG} 62%)`, clipPath: `circle(${r}px at ${x}px ${y}px)` }} />
+      <div style={{ position: "absolute", left: x - r, top: y - r, width: r * 2, height: r * 2, borderRadius: "50%", border: `2.5px solid ${GREEN}`, opacity: 0.45 }} />
+    </>
+  );
+};
+
+/* the line head's dot lifts off, flies up and stretches into the friend's message pill */
+const PILL = { x: 500, y: 431, w: 353.8, h: 98 }; // measured: Inter 600 46px "You can do it." + padding 20/32 + border
+const MorphBubble: React.FC<{ t: number; s: number }> = ({ t, s }) => {
+  const at = 21.3;
+  const outAt = 25.3;
+  if (t < at || t > outAt + 0.5) return null;
+  const P = project(at);
+  const hx = 540 + (P.sx(WX(headX(at))) - 540) * s;
+  const hy = 820 + (P.sy(WY(score(headX(at)))) - 820) * s;
+  const cx0 = PILL.x + PILL.w / 2;
+  const cy0 = PILL.y + PILL.h / 2;
+  const u = prog(t, at, at + 0.34, easeInOut);
+  const cx = (1 - u) ** 2 * hx + 2 * (1 - u) * u * (hx - 120) + u * u * cx0;
+  const cy = (1 - u) ** 2 * hy + 2 * (1 - u) * u * ((hy + cy0) / 2) + u * u * cy0;
+  const m = prog(t, at + 0.3, at + 0.66, easeOutExpo);
+  const w = lerp(18, PILL.w, m);
+  const h = lerp(18, PILL.h, m);
+  const o = prog(t, outAt, outAt + 0.4, easeInExpo);
+  const txt = prog(t, at + 0.52, at + 0.8, easeOutExpo);
+  const who = prog(t, at + 0.6, at + 0.95, easeOutExpo);
+  return (
+    <div style={{ position: "absolute", left: 0, top: 0, opacity: 1 - o, transform: `translateY(${-o * 20}px)`, filter: o ? `blur(${o * 8}px)` : undefined }}>
+      <div style={{ position: "absolute", left: PILL.x + 6, top: PILL.y - 41 + (1 - who) * 12, fontFamily: MONO, fontSize: 22, letterSpacing: 3, color: GREEN, opacity: who }}>BEST FRIEND</div>
+      <div
+        style={{
+          position: "absolute",
+          left: cx - w / 2,
+          top: cy - h / 2,
+          width: w,
+          height: h,
+          boxSizing: "border-box",
+          borderRadius: `${lerp(9, 30, m)}px ${lerp(9, 30, m)}px ${lerp(9, 30, m)}px ${lerp(9, 8, m)}px`,
+          background: mixColor(GREEN, "#FFFFFF", m),
+          border: `1.5px solid ${GREEN}${m > 0.5 ? "40" : "FF"}`,
+          boxShadow: m > 0.05 ? `0 24px 50px rgba(90,60,25,${0.15 * m}), 0 6px 16px rgba(90,60,25,${0.08 * m})` : `0 0 18px ${GREEN}88`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          fontFamily: SANS,
+          fontWeight: 600,
+          fontSize: 46,
+          letterSpacing: "-0.02em",
+          color: WHITE,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <span style={{ opacity: txt, transform: `translateY(${(1 - txt) * 14}px)`, filter: txt < 0.95 ? `blur(${(1 - txt) * 6}px)` : undefined }}>You can do it.</span>
+      </div>
     </div>
   );
 };
@@ -822,15 +959,14 @@ const Result: React.FC<{ t: number }> = ({ t }) => {
 /* Title */
 const Title: React.FC<{ t: number }> = ({ t }) => {
   if (t < 51.2 || t > 53.7) return null;
-  const tags = prog(t, 52.1, 52.8, easeOutExpo);
   return (
     <>
-      <Kinetic t={t} text="Beyond the|*Grades.*" inAt={51.3} outAt={52.95} accent={YELLOW} y={1280} size={156} weight={800} chars />
-      <div style={{ position: "absolute", left: 0, right: 0, top: 1480, textAlign: "center", fontFamily: SANS, fontWeight: 500, fontSize: 34, color: "#8C877D", lineHeight: 1.6, opacity: tags * (1 - prog(t, 52.9, 53.3, easeInOut)), transform: `translateY(${(1 - tags) * 20}px)` }}>
-        #OPLA2026&nbsp;&nbsp;#BeyondTheGrades
-        <br />
-        #PearsonLearnerCreator
-      </div>
+      <Kinetic t={t} text="Beyond the" inAt={51.3} outAt={52.95} accent={YELLOW} y={1280 - 85.8} size={156} weight={800} chars />
+      {/* the last word runs back through the story before it lands: gaming. -> asthma. -> Grades. */}
+      <RollWord t={t} text="gaming." inAt={51.3} outAt={51.52} x={540} y={1280 + 85.8} size={156} weight={800} color={RED} />
+      <RollWord t={t} text="asthma." inAt={51.6} outAt={51.8} x={540} y={1280 + 85.8} size={156} weight={800} color={RED} />
+      <Kinetic t={t} text="*Grades.*" inAt={51.86} outAt={53.0} accent={YELLOW} y={1280 + 85.8} size={156} weight={800} chars />
+      <TypedTags t={t} at={52.12} lines={["#OPLA2026  #BeyondTheGrades", "#PearsonLearnerCreator"]} y={1470} accent={YELLOW} speed={80} out={52.98} />
     </>
   );
 };
@@ -900,10 +1036,12 @@ export const V2: React.FC = () => {
       <Foreground2 t={t} />
       <AbsoluteFill style={{ transformOrigin: `${HOLE6.x}px ${HOLE6.y}px`, transform: `scale(${fly6(t)})` }}>
       <AbsoluteFill style={{ transform: `translate(${sx}px, ${sy}px) scale(${s})`, transformOrigin: "540px 820px" }}>
+        <TurnWipe t={t} />
         <Chart t={t} />
         <IntroHUD t={t} />
         <ChapterSweep t={t} />
         <ChapterLabel t={t} />
+        <ThoughtCloud t={t} />
         <Terminal t={t} />
       </AbsoluteFill>
       <AbsoluteFill style={{ transform: `translate(${sx * 0.5}px, ${sy * 0.5}px)` }}>
@@ -916,9 +1054,11 @@ export const V2: React.FC = () => {
         <Kinetic t={t} text="But talent alone|doesn't get you an *award.*" inAt={6.64} outAt={8.95} accent={YELLOW} y={TY} size={76} />
         <Kinetic t={t} text="I spent more time|[pad] *gaming* than studying." inAt={9.3} outAt={13.6} accent={RED} y={TY} size={74} />
         <Kinetic t={t} text="Then asthma|hit me [pulse] *hard.*" inAt={14.15} outAt={16.95} accent={RED} y={TY} />
-        <Kinetic t={t} text="I had to|slow down." inAt={17.25} outAt={20.6} accent={RED} y={TY} stagger={0.12} />
-        <Bubble t={t} at={21.3} outAt={25.3} who="BEST FRIEND" text="You can do it." color={GREEN} x={500} y={390} />
-        <Kinetic t={t} text="So I came back.|With [spark] *confidence.*" inAt={22.3} outAt={25.25} accent={GREEN} y={TY} />
+        <Kinetic t={t} text="I had to|slow down." inAt={17.25} outAt={20.6} accent={RED} y={TY} mode="focus" />
+        <MorphBubble t={t} s={s} />
+        <LightStreak t={t} at={22.22} y={TY - 44} />
+        <Kinetic t={t} text="So I came back." inAt={22.3} outAt={25.25} accent={GREEN} y={TY - 46.2} mode="streak" />
+        <Kinetic t={t} text="With [spark] *confidence.*" inAt={22.39} outAt={25.3} accent={GREEN} y={TY + 46.2} />
         <TipCard t={t} sceneS={s} />
         <Bubble t={t} at={35.7} outAt={37.75} who="FAMILY" text="You can do great." color={ORANGE} x={90} y={TY - 140} />
         <Bubble t={t} at={36.3} outAt={37.8} who="" text="Don't worry if you don't get 60." color={ORANGE} x={90} y={TY + 10} size={40} />
@@ -936,7 +1076,7 @@ export const V2: React.FC = () => {
         <Title t={t} />
       </AbsoluteFill>
       <Sparkles t={t} at={44.95} x={470} y={TY - 40} color={YELLOW} n={14} spread={260} seed={4} />
-      <Sparkles t={t} at={51.9} x={760} y={1340} color={YELLOW} n={12} spread={220} seed={6} />
+      <Sparkles t={t} at={52.3} x={790} y={1380} color={YELLOW} n={12} spread={220} seed={6} />
       <Flash t={t} at={HUD_HIT} color={RED} peak={0.14} dur={0.5} />
       <Flash t={t} at={4.23} color="#FFFFFF" peak={0.5} dur={0.6} />
       <Flash t={t} at={42.86} color="#FFFFFF" peak={0.4} dur={0.6} />

@@ -5,7 +5,7 @@ import timeline from "./timeline.json";
 
 const warpT = makeWarp((timeline as { warp?: number[][] }).warp);
 import { MONO, SANS } from "../premium/fonts";
-import { Ambience, Cursor, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, SelectBox, Sparkles } from "../premium/components";
+import { Ambience, Cursor, Flash, FilmLook, GiantWord, INK, Kinetic, Orb, PAPER, RollWord, SelectBox, Sparkles, TypedTags } from "../premium/components";
 import { makeWarp, FPS, clamp, easeInExpo, easeInOut, easeOutBack, easeOutExpo, lerp, prog, rand, smoothKeys } from "../premium/lib";
 
 const BLUE = "#5B8CFF";
@@ -140,7 +140,7 @@ const Ripple: React.FC<{ t: number; at: number; x: number; y: number; color?: st
 /* ================================================================== */
 // opening hook / loop seam: the film starts on (and loops back to) a frame filled by the blue dot
 const HOOK_END = 0.6;
-const SWELLS = [4.2, 5.95, 7.15]; // soft light from the dot between the opening lines
+const SWELLS = [4.2, 5.95, 7.15, 9.55]; // soft light from the dot between the opening lines (+ the full stop landing)
 const HOOK_R0 = 2300;
 const GLYPHS = ["dy/dx", "√x", "x²", "∫", "n!", "Δ", "sin θ", "f(x)", "π", "%", "∞", "Σ", "θ", "≈", "e^x", "∂"];
 
@@ -271,6 +271,7 @@ const WaveScene: React.FC<{ t: number }> = ({ t }) => {
         const r = 40 + p * 640;
         return <div key={i} style={{ position: "absolute", left: dx - r, top: dy - r, width: r * 2, height: r * 2, borderRadius: "50%", background: `radial-gradient(circle, ${BLUE}2E 0%, ${BLUE}10 45%, transparent 70%)`, opacity: 1 - p }} />;
       })}
+      <Ripple t={t} at={9.55} x={dx} y={dy} color={BLUE} size={170} />
       <Ripple t={t} at={15.2} x={CX} y={CY} color={BLUE} size={220} />
     </AbsoluteFill>
   );
@@ -404,6 +405,8 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
   const curX = lerp(lerp(780, btn.x, cin), 760, cout);
   const curY = lerp(lerp(1060, btn.y, cin), 1000, cout);
   const curOp = prog(t, 23.3, 23.5) * (1 - prog(t, 24.45, 24.75)) * (1 - collapse);
+  // after the tap the button lifts out of the screen towards the lens, then settles as the UI relayouts
+  const lift = prog(t, TAP + 0.03, TAP + 0.3, easeOutBack) * (1 - prog(t, TAP + 0.42, TAP + 0.75, easeInOut));
   return (
     <AbsoluteFill>
       {/* frame stroke draw-on */}
@@ -449,7 +452,7 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
             {bar(112, 220, 24, "#F1F4FF", 22.58)}
             {bar(156, 250, 7, "#4A5370", 22.7)}
             {bar(172, 190, 7, "#4A5370", 22.76)}
-            {bar(206, 92, 26, BLUE, 22.88, { boxShadow: `0 0 18px ${BLUE}99` })}
+            {bar(206, 92, 26, BLUE, 22.88, { boxShadow: `0 0 18px ${BLUE}99`, opacity: prog(t, 22.88, 23.43, easeOutExpo) * (1 - 0.8 * lift) })}
           </div>
           {/* hero card */}
           <div
@@ -542,6 +545,25 @@ const Phone: React.FC<{ t: number }> = ({ t }) => {
           </div>
         </div>
       </div>
+      {lift > 0.005 && (
+        <>
+          <div style={{ position: "absolute", left: btn.x - 46 - 6, top: btn.y + 10, width: 104, height: 20, borderRadius: "50%", background: "rgba(10,14,30,0.55)", filter: "blur(8px)", opacity: lift * (1 - re) }} />
+          <div
+            style={{
+              position: "absolute",
+              left: btn.x - 46,
+              top: btn.y - 13,
+              width: 92,
+              height: 26,
+              borderRadius: 13,
+              background: `linear-gradient(100deg, ${BLUE} ${lift * 120 - 30}%, #BFD2FF ${lift * 120 - 10}%, ${BLUE} ${lift * 120 + 10}%)`,
+              boxShadow: `0 ${18 * lift}px ${30 * lift}px rgba(20,30,80,0.45), 0 0 22px ${BLUE}AA`,
+              transform: `perspective(700px) translateY(${-46 * lift}px) translateZ(${110 * lift}px) rotateX(${16 * lift}deg) scale(${1 + 0.35 * lift})`,
+              opacity: 1 - re,
+            }}
+          />
+        </>
+      )}
       <Cursor t={t} x={curX} y={curY} clickAt={TAP} opacity={curOp} />
     </AbsoluteFill>
   );
@@ -610,9 +632,80 @@ const PHRASES: [string, number, number][] = [
   ["One more *try.*", 520.67, 7.25],
 ];
 const PH_GAP = 30;
-const PH_OUT = 9.35;
+// the full stop of "try." breaks off (DOT_A), the words fall away, it bounces once and flies
+// into the wave's pen head, landing on the beat at DOT_B
+const DOT_A = 8.75;
+const DOT_B = 9.55;
+const FALL_A = 8.86;
+const PER0 = { x: 279.67 + 509.5, y: TY - 46 + 70 }; // measured ink centre of "." (Inter 700 84px), slide settled
+const DOT_FLOOR = 90;
+const DOT_V0 = -520;
+const DOT_G = 5200;
+const DOT_LAND = DOT_A + (-DOT_V0 + Math.sqrt(DOT_V0 * DOT_V0 + 2 * DOT_G * DOT_FLOOR)) / DOT_G;
+const penHead = (t: number) => {
+  const X0 = 150;
+  const X1 = 930;
+  const penX = lerp(X0, X1, prog(t, 5.6, 9.6, easeInOut));
+  const ampEnd = smoothKeys([[5.6, 30], [7.25, 60], [8.2, 95], [9.6, 120], [10.6, 140]])(t);
+  const u = clamp((penX - X0) / (X1 - X0));
+  return { x: penX, y: CY - ampEnd * (0.12 + u * 0.88) * Math.sin(((penX - X0) / 300) * Math.PI * 2) };
+};
+// camera space -> headline-layer space
+const camToLayer = (p: { x: number; y: number }, t: number) => {
+  const s = camScale(t);
+  const a = (camRot(t) * Math.PI) / 180;
+  const dx = (p.x - CX) * s;
+  const dy = (p.y - CY) * s;
+  return { x: CX + dx * Math.cos(a) - dy * Math.sin(a), y: CY + dx * Math.sin(a) + dy * Math.cos(a) - (camScale(t) - 1) * -40 };
+};
+const dotPos = (t: number) => {
+  if (t < DOT_LAND) {
+    const tau = Math.max(0, t - DOT_A);
+    return { x: PER0.x + tau * 60, y: PER0.y + DOT_V0 * tau + 0.5 * DOT_G * tau * tau, r: 6.5 };
+  }
+  const b0 = { x: PER0.x + (DOT_LAND - DOT_A) * 60, y: PER0.y + DOT_FLOOR };
+  const tg = camToLayer(penHead(t), t);
+  const u = clamp((t - DOT_LAND) / (DOT_B - DOT_LAND));
+  const c = { x: (b0.x + tg.x) / 2 + 40, y: Math.min(b0.y, tg.y) - 300 };
+  const x = (1 - u) ** 2 * b0.x + 2 * (1 - u) * u * c.x + u * u * tg.x;
+  const y = (1 - u) ** 2 * b0.y + 2 * (1 - u) * u * c.y + u * u * tg.y;
+  return { x, y, r: lerp(6.5, 11 * camScale(t), u) };
+};
+const FlyingStop: React.FC<{ t: number }> = ({ t }) => {
+  if (t < DOT_A || t >= DOT_B) return null;
+  const hop = prog(t, DOT_A, DOT_A + 0.12, easeOutBack) * (1 - prog(t, DOT_A + 0.12, DOT_A + 0.3));
+  const squash = t > DOT_LAND - 0.03 && t < DOT_LAND + 0.1 ? Math.sin(Math.PI * clamp((t - DOT_LAND + 0.03) / 0.13)) : 0;
+  return (
+    <>
+      {[3, 2, 1].map((k) => {
+        const g = dotPos(t - k * 0.022);
+        return t - k * 0.022 > DOT_LAND ? <div key={k} style={{ position: "absolute", left: g.x - g.r, top: g.y - g.r, width: g.r * 2, height: g.r * 2, borderRadius: "50%", background: BLUE, opacity: 0.12 * (4 - k) }} /> : null;
+      })}
+      {(() => {
+        const d = dotPos(t);
+        const r = d.r * (1 + hop * 0.35);
+        return (
+          <div
+            style={{
+              position: "absolute",
+              left: d.x - r,
+              top: d.y - r,
+              width: r * 2,
+              height: r * 2,
+              borderRadius: "50%",
+              background: BLUE,
+              boxShadow: `0 ${r * 0.6}px ${r * 2}px ${BLUE}66, 0 0 ${r * 4}px ${BLUE}33`,
+              transform: `scale(${1 + squash * 0.35}, ${1 - squash * 0.4})`,
+              transformOrigin: "50% 100%",
+            }}
+          />
+        );
+      })()}
+    </>
+  );
+};
 const SlidingLine: React.FC<{ t: number }> = ({ t }) => {
-  if (t < PHRASES[0][2] - 0.05 || t > PH_OUT + 0.6) return null;
+  if (t < PHRASES[0][2] - 0.05 || t > FALL_A + 0.9) return null;
   const lefts: number[] = [];
   let acc = 0;
   PHRASES.forEach(([, w]) => {
@@ -622,26 +715,91 @@ const SlidingLine: React.FC<{ t: number }> = ({ t }) => {
   const centre = (i: number) => lefts[i] + PHRASES[i][1] / 2;
   let off = centre(0);
   for (let i = 1; i < PHRASES.length; i++) off = lerp(off, centre(i), prog(t, PHRASES[i][2] - 0.15, PHRASES[i][2] + 0.55, easeInOut));
-  const e = prog(t, PH_OUT, PH_OUT + 0.45, easeInExpo);
   return (
     <div style={{ position: "absolute", left: 0, top: TY - 46, width: 4000, transform: `translate(${CX - off}px, 0px)`, fontFamily: SANS, fontWeight: 700, fontSize: 84, letterSpacing: "-0.035em", lineHeight: 1.1, color: INK, whiteSpace: "nowrap" }}>
       {PHRASES.map(([txt, , at], i) => {
         const p = prog(t, at, at + 0.7, easeOutExpo);
         const next = i < PHRASES.length - 1 ? PHRASES[i + 1][2] : 99;
         const dim = 1 - 0.7 * prog(t, next - 0.1, next + 0.4, easeInOut);
-        const op = clamp(p * 1.6) * dim * (1 - e);
+        const op = clamp(p * 1.6) * dim;
+        const isLast = i === PHRASES.length - 1;
         return (
-          <span key={i} style={{ position: "absolute", left: lefts[i], top: 0, transform: `translateY(${(1 - p) * 60 - e * 60}px)`, opacity: op, filter: (1 - p) * 5 + e * 4 > 0.3 ? `blur(${(1 - p) * 5 + e * 4}px)` : undefined }}>
-            {txt.split(" ").map((w, j, arr) => (
-              <span key={j} style={{ color: w.startsWith("*") ? BLUE : undefined }}>
-                {w.replace(/\*/g, "")}
-                {j < arr.length - 1 ? " " : ""}
-              </span>
-            ))}
+          <span key={i} style={{ position: "absolute", left: lefts[i], top: 0, transform: `translateY(${(1 - p) * 60}px)`, opacity: op, filter: (1 - p) * 5 > 0.3 ? `blur(${(1 - p) * 5}px)` : undefined }}>
+            {txt.split(" ").map((w, j, arr) => {
+              // the words drop away under gravity, one after another, tipping as they go
+              const fs = FALL_A + (i * 3 + j) * 0.035 - (isLast ? 0 : 0.1);
+              const tau = Math.max(0, t - fs);
+              const fall = 0.5 * 4200 * tau * tau;
+              const rot = tau * (j % 2 ? 26 : -18);
+              const fo = 1 - prog(t, fs + 0.18, fs + 0.5);
+              const word = w.replace(/\*/g, "");
+              const lastWord = isLast && j === arr.length - 1;
+              return (
+                <span key={j} style={{ display: "inline-block", whiteSpace: "pre", color: w.startsWith("*") ? BLUE : undefined, transform: `translateY(${fall}px) rotate(${rot}deg)`, opacity: fo }}>
+                  {lastWord ? word.slice(0, -1) : word}
+                  {lastWord && <span style={{ opacity: t < DOT_A ? 1 : 0 }}>.</span>}
+                  {j < arr.length - 1 ? " " : ""}
+                </span>
+              );
+            })}
           </span>
         );
       })}
     </div>
+  );
+};
+
+/* ================================================================== */
+/* "somewhere." arrives on a picker wheel: patterns. / code. / build. /  */
+/* somewhere. (measured slot: Inter 700 72px, x 432.48, centre y 1388.5) */
+/* ================================================================== */
+const REEL = ["patterns.", "code.", "build.", "somewhere."];
+const REEL_A = 32.69;
+const REEL_B = 33.55;
+const REEL_HAND = 34.0; // the Kinetic word takes over (its sweep has finished, both identical)
+const REEL_X = 432.48;
+const REEL_CY = 1348.91 + 79.19 / 2;
+const REEL_GAP = 86;
+const Reel: React.FC<{ t: number }> = ({ t }) => {
+  if (t < REEL_A || t >= REEL_HAND) return null;
+  const pin = prog(t, REEL_A, REEL_A + 0.3, easeOutExpo);
+  const pos = (REEL.length - 1) * prog(t, REEL_A + 0.08, REEL_B, easeOutBack);
+  const band = pin * (1 - prog(t, REEL_B - 0.05, REEL_B + 0.3));
+  return (
+    <>
+      {[-1, 1].map((sgn) => (
+        <div key={sgn} style={{ position: "absolute", left: REEL_X - 10, top: REEL_CY + sgn * 46, width: 430, height: 2, background: BLUE, opacity: 0.22 * band }} />
+      ))}
+      {REEL.map((w, k) => {
+        const d = k - pos;
+        if (Math.abs(d) > 1.6) return null;
+        const o = clamp(1 - Math.abs(d) * 0.78) * pin;
+        return (
+          <span
+            key={k}
+            style={{
+              position: "absolute",
+              left: REEL_X,
+              top: REEL_CY - 39.6 + d * REEL_GAP + (1 - pin) * 40,
+              fontFamily: SANS,
+              fontWeight: 700,
+              fontSize: 72,
+              letterSpacing: "-0.035em",
+              lineHeight: 1.1,
+              color: BLUE,
+              whiteSpace: "nowrap",
+              opacity: o,
+              transform: `perspective(700px) rotateX(${-d * 32}deg)`,
+              transformOrigin: "0% 50%",
+              filter: Math.abs(d) > 0.05 ? `blur(${Math.min(6, Math.abs(d) * 4)}px)` : undefined,
+              textShadow: `0 10px 30px rgba(80,55,25,${0.1 * o})`,
+            }}
+          >
+            {w}
+          </span>
+        );
+      })}
+    </>
   );
 };
 
@@ -715,6 +873,25 @@ const Pathway: React.FC<{ t: number }> = ({ t }) => {
           opacity: (t > 27.2 ? 1 : 0) * (1 - merge),
         }}
       />
+      {/* light pulses run down the finished spine into the newest step; the growing tip glows */}
+      {merge < 0.05 &&
+        new Array(18).fill(0).map((_, k) => {
+          const spawn = 27.4 + k * 0.42;
+          if (t < spawn || spawn > 34.6) return null;
+          const py = nodes[0].y + (t - spawn) * 640;
+          if (py > lineTo + 4) return null;
+          const end = clamp((lineTo - py) / 50);
+          const o = Math.min(1, (t - spawn) / 0.12) * end * (1 - labelsOut);
+          return (
+            <React.Fragment key={k}>
+              <div style={{ position: "absolute", left: NX - 2, top: py - 54, width: 4, height: 54, borderRadius: 2, background: `linear-gradient(180deg, transparent, ${BLUE}AA)`, opacity: o }} />
+              <div style={{ position: "absolute", left: NX - 6, top: py - 6, width: 12, height: 12, borderRadius: 6, background: "#FFFFFF", border: `2.5px solid ${BLUE}`, boxShadow: `0 0 16px ${BLUE}`, opacity: o }} />
+            </React.Fragment>
+          );
+        })}
+      {NODE_T.some((nt, i) => i > 0 && t > nt - 0.45 && t < nt) && (
+        <div style={{ position: "absolute", left: NX - 26, top: lineTo - 26, width: 52, height: 52, borderRadius: "50%", background: `radial-gradient(circle, ${BLUE}88 0%, ${BLUE}22 45%, transparent 70%)` }} />
+      )}
       {nodes.map((n, i) => {
         const at = NODE_T[i];
         if (t < at - 0.02 && !(i === 0 && t > 26.95)) return null;
@@ -1030,6 +1207,7 @@ const Formation: React.FC<{ t: number }> = ({ t }) => {
 /* Scene F — ending: blue dot → full stop of the title (40.9 – end)    */
 /* ================================================================== */
 const TITLE_AT = 47.69;
+const GRADES_AT = 48.22;
 const TS = 156;
 const TITLE_TOP = 860;
 const SLOT = 34;
@@ -1051,17 +1229,16 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
   const arcY = -140 * Math.sin(Math.PI * fly);
   const dx = lerp(o.x, end.x, fly);
   const dy = lerp(o.y, end.y, fly) + arcY;
-  const sweep = prog(t, TITLE_AT + 1.2, TITLE_AT + 2.2, easeInOut);
-  const charReveal = (txt: string, at: number) =>
+  const sweep = prog(t, TITLE_AT + 1.35, TITLE_AT + 2.25, easeInOut);
+  const charReveal = (txt: string, at: number, st = 0.035, dur = 0.8) =>
     txt.split("").map((ch, i) => {
-      const cp = prog(t, at + i * 0.035, at + i * 0.035 + 0.8, easeOutExpo);
+      const cp = prog(t, at + i * st, at + i * st + dur, easeOutExpo);
       return (
         <span key={i} style={{ display: "inline-block", whiteSpace: "pre", transform: `translateY(${(1 - cp) * TS * 1.15}px)`, opacity: clamp(cp * 1.8), filter: cp < 0.95 ? `blur(${(1 - cp) * 4}px)` : undefined }}>
           {ch}
         </span>
       );
     });
-  const tags = prog(t, 48.6, 49.3, easeOutExpo);
   return (
     <AbsoluteFill data-root="1" style={{ transformOrigin: `${end.x}px ${end.y}px`, transform: `scale(${loopZ})` }}>
       {/* title */}
@@ -1082,8 +1259,8 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
       >
         <div style={{ overflow: "hidden", padding: "0.05em 0.2em 0.15em", margin: "-0.05em 0 -0.15em" }}>{charReveal("Beyond the", TITLE_AT)}</div>
         <div style={{ position: "relative", display: "inline-block" }}>
-          {t < TITLE_AT + 1.2 ? (
-            <span style={{ display: "inline-block", overflow: "hidden", padding: "0.05em 0 0.15em", margin: "-0.05em 0 -0.15em", verticalAlign: "bottom" }}>{charReveal("Grades", TITLE_AT + 0.3)}</span>
+          {t < TITLE_AT + 1.35 ? (
+            <span style={{ display: "inline-block", overflow: "hidden", padding: "0.05em 0 0.15em", margin: "-0.05em 0 -0.15em", verticalAlign: "bottom" }}>{charReveal("Grades", GRADES_AT, 0.022, 0.55)}</span>
           ) : (
           <span
             style={{
@@ -1098,12 +1275,10 @@ const Ending: React.FC<{ t: number }> = ({ t }) => {
           )}
           <span ref={ref} style={{ display: "inline-block", width: SLOT, height: SLOT, marginLeft: SLOT_GAP, verticalAlign: "baseline" }} />
         </div>
-        <div style={{ fontSize: 34, fontWeight: 500, letterSpacing: "0em", color: "#8C877D", marginTop: 60, lineHeight: 1.6, opacity: tags, transform: `translateY(${(1 - tags) * 20}px)` }}>
-          #OPLA2026&nbsp;&nbsp;#BeyondTheGrades
-          <br />
-          #PearsonLearnerCreator
-        </div>
       </div>
+      {/* the word before "Grades" rolls through the story first: "Beyond the numbers" -> "Grades" */}
+      <RollWord t={t} text="numbers" inAt={TITLE_AT + 0.04} outAt={GRADES_AT - 0.03} x={523} y={TITLE_TOP + TS + 78} size={TS} weight={800} color={INK} letterSpacing="-0.05em" />
+      <TypedTags t={t} at={48.6} lines={["#OPLA2026  #BeyondTheGrades", "#PearsonLearnerCreator"]} y={TITLE_TOP + 2 * TS + 64} accent={BLUE} />
       {show && <Dot x={dx} y={dy} r={14 * dotIn} color={BLUE} glow={1.5} />}
       <Ripple t={t} at={40.95} x={dotOrigin(40.95).x} y={dotOrigin(40.95).y} color={BLUE} size={200} />
       <Ripple t={t} at={42.2} x={CX} y={CY} color={BLUE} size={160} />
@@ -1198,10 +1373,12 @@ export const V1: React.FC = () => {
         <GiantWord t={t} word="dot." color={BLUE} size={84} weight={700} from={{ x: CX, y: 1000, scale: 3.6 }} to={{ x: 651.73, y: 1332.42 }} inAt={0.5} moveAt={1.2} until={3.7} />
         <Kinetic t={t} text="Every big thing|starts as one|small *dot.*" inAt={1.15} outAt={3.85} accent={BLUE} y={TY} hideWord="dot." hideUntil={3.7} />
         <SlidingLine t={t} />
+        <FlyingStop t={t} />
         <Kinetic t={t} text="Maths taught me|to see [wave] *patterns.*" inAt={9.9} outAt={14.15} accent={BLUE} y={TY} />
         <Kinetic t={t} text="Patterns taught me|to [code] *code.*" inAt={16.55} outAt={20.9} accent={BLUE} y={TY} />
         <Kinetic t={t} text="Code taught me|to [phone] *build.*" inAt={21.95} outAt={26.4} accent={BLUE} y={TY + 70} />
-        <Kinetic t={t} text="With Pearson Edexcel,|every step|leads *somewhere.*" inAt={32.4} outAt={35.15} accent={BLUE} y={TY + 70} size={72} />
+        <Kinetic t={t} text="With Pearson Edexcel,|every step|leads *somewhere.*" inAt={32.4} outAt={35.15} accent={BLUE} y={TY + 70} size={72} hideWord="somewhere." hideUntil={REEL_HAND} />
+        <Reel t={t} />
         <SelectBox t={t} at={33.7} until={35.1} x={432.48} y={1348.91} w={410.33} h={79.19} color={BLUE} />
         <Kinetic t={t} text="This year,|I'm *one of them.*" inAt={41.06} outAt={43.2} accent={BLUE} y={1010} />
         <Kinetic t={t} text="Your dot|is *waiting.*" inAt={43.5} outAt={45.55} accent={BLUE} y={1010} />
